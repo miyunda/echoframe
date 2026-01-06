@@ -8,6 +8,7 @@ import { parseLRC } from './utils/lrcParser';
 export default function App() {
     const [image, setImage] = useState(null);
     const [audio, setAudio] = useState(null);
+    const [avatar, setAvatar] = useState(null);
     const [lyrics, setLyrics] = useState(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
@@ -20,6 +21,11 @@ export default function App() {
     const handleImageUpload = (file) => {
         const url = URL.createObjectURL(file);
         setImage({ file, url });
+    };
+
+    const handleAvatarUpload = (file) => {
+        const url = URL.createObjectURL(file);
+        setAvatar({ file, url });
     };
 
     const handleAudioUpload = (file) => {
@@ -75,6 +81,7 @@ export default function App() {
 
     const clearFiles = () => {
         setImage(null);
+        setAvatar(null);
         setAudio(null);
         setLyrics(null);
         setIsPlaying(false);
@@ -127,8 +134,16 @@ export default function App() {
                             />
                         </div>
 
-                        {/* Styles for Optional LRC Upload */}
-                        <div className="w-full mt-6">
+                        {/* Styles for Optional Uploads */}
+                        <div className="w-full mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FileUpload
+                                type="image"
+                                accept="image/*"
+                                icon={<ImageIcon className="w-8 h-8 text-iris" />}
+                                label="上传人物/Logo (可选)"
+                                onUpload={handleAvatarUpload}
+                                file={avatar}
+                            />
                             <FileUpload
                                 type="text"
                                 accept=".lrc,.txt"
@@ -167,6 +182,7 @@ export default function App() {
                     <Preview
                         image={image}
                         audio={audio}
+                        avatar={avatar}
                         audioRef={audioRef}
                         isPlaying={isPlaying}
                         setIsPlaying={setIsPlaying}

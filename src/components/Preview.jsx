@@ -55,6 +55,7 @@ export default function Preview({ image, audio, audioRef, isPlaying, setIsPlayin
             setExportProgress(0);
 
             // 1. Initialize Engine
+            setIsPlaying(false); // Stop playback before export
             setExportStage(EXPORT_STAGES.INITIALIZING);
             await loadFFmpeg();
             const ffmpeg = ffmpegRef.current;

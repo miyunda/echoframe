@@ -159,7 +159,7 @@ export default function App() {
                                 onClick={handleDebugAudio}
                                 className="text-subtle hover:text-text text-xs underline underline-offset-4 cursor-pointer transition-colors"
                             >
-                                🛠️ 生成测试音频 (6s Stereo Test)
+                                🛠️ 点这里生成测试用音频和字幕
                             </button>
                         </div>
                     </>
@@ -187,7 +187,7 @@ export default function App() {
                 )}
 
                 <footer className="mt-8 text-subtle text-xs font-mono uppercase tracking-widest">
-                    &copy; 2026 <a href="https://miyunda.com" target="_blank" rel="noreferrer" className="hover:text-text transition-colors underline decoration-white/30">Miyunda</a> EchoFrame Project. For who loves 🎵, by who loves 🎵.
+                    &copy; 2026 <a href="https://miyunda.com" target="_blank" rel="noreferrer" className="hover:text-text transition-colors underline decoration-white/30">Miyunda</a> <a href="https://github.com/miyunda/echoframe" target="_blank" rel="noreferrer" className="hover:text-text transition-colors underline decoration-white/30">EchoFrame Project</a>. For who loves 🎵, by who loves 🎵.
                 </footer>
             </div>
         </div>

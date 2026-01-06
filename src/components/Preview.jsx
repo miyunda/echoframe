@@ -15,7 +15,7 @@ const EXPORT_STAGES = {
     READY: 'ready'
 };
 
-export default function Preview({ image, audio, audioRef, isPlaying, setIsPlaying, onClear, lyrics }) {
+export default function Preview({ image, audio, audioRef, isPlaying, setIsPlaying, onClear, lyrics, avatar }) {
     const [bassScale, setBassScale] = useState(1);
     const [exportStage, setExportStage] = useState(EXPORT_STAGES.IDLE);
     const [exportProgress, setExportProgress] = useState(0);
@@ -55,6 +55,7 @@ export default function Preview({ image, audio, audioRef, isPlaying, setIsPlayin
             setExportProgress(0);
 
             // 1. Initialize Engine
+            setIsPlaying(false); // Stop playback before export
             setExportStage(EXPORT_STAGES.INITIALIZING);
             await loadFFmpeg();
             const ffmpeg = ffmpegRef.current;
@@ -90,8 +91,15 @@ export default function Preview({ image, audio, audioRef, isPlaying, setIsPlayin
             const canvas = new OffscreenCanvas(width, height);
             const ctx = canvas.getContext('2d');
             const bgImage = await createImageBitmap(image.file);
+            // Load Avatar Bitmap if exists
+            let avatarImage = null;
+            if (avatar && avatar.file) {
+                avatarImage = await createImageBitmap(avatar.file);
+            }
+
             const barsStateLeft = Array(256).fill(0);
             const barsStateRight = Array(256).fill(0);
+            let currentAvatarY = 0;
 
             for (let i = 0; i < totalFrames; i++) {
                 // Calculate precise virtual time for this frame
@@ -113,6 +121,50 @@ export default function Preview({ image, audio, audioRef, isPlaying, setIsPlayin
 
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
                 ctx.fillRect(0, 0, width, height);
+
+                // Draw Avatar (Offline Rendering)
+                if (avatarImage) {
+                    // Calculate Bass Energy
+                    const bassBinCount = 5;
+                    let bassSum = 0;
+                    for (let j = 0; j < bassBinCount; j++) {
+                        bassSum += Math.max(leftData[j] || 0, rightData[j] || 0);
+                    }
+                    const bassAvg = bassSum / bassBinCount;
+
+                    // Target Offset
+                    const targetOffset = - (bassAvg / 255) * (height * 0.12);
+
+                    // Apply Smoothing
+                    const smoothing = 0.4;
+                    currentAvatarY += (targetOffset - currentAvatarY) * smoothing;
+
+                    // Keep size constant
+                    const size = Math.min(width, height) * 0.6;
+
+                    const x = (width - size) / 2;
+                    // Add offset to Y
+                    const y = ((height - size) / 2) + currentAvatarY;
+
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(width / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+                    ctx.clip();
+
+                    const imgSize = Math.min(avatarImage.width, avatarImage.height);
+                    const sx = (avatarImage.width - imgSize) / 2;
+                    const sy = (avatarImage.height - imgSize) / 2;
+
+                    ctx.drawImage(avatarImage, sx, sy, imgSize, imgSize, x, y, size, size);
+
+                    // Optional: Add a border (match Visualizer)
+                    ctx.lineWidth = 4;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.stroke();
+
+                    ctx.restore();
+                }
+
 
                 const vizWidth = width * 0.7;
                 const vizHeight = height * 0.3;
@@ -253,6 +305,7 @@ export default function Preview({ image, audio, audioRef, isPlaying, setIsPlayin
                             isPlaying={isPlaying}
                             onBassPulse={handleBassPulse}
                             lyrics={lyrics}
+                            avatar={avatar}
                         />
                     </div>
                 </div>

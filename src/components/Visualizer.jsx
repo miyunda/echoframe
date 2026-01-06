@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { drawStereoBars, detectBass, drawLyrics } from '../utils/visualizerUtils';
 
-const Visualizer = forwardRef(({ audioRef, isPlaying, onBassPulse, lyrics }, ref) => {
+const Visualizer = forwardRef(({ audioRef, isPlaying, onBassPulse, lyrics, avatar }, ref) => {
     const canvasRef = useRef(null);
     const audioCtxRef = useRef(null);
     const leftAnalyserRef = useRef(null);
@@ -10,12 +10,26 @@ const Visualizer = forwardRef(({ audioRef, isPlaying, onBassPulse, lyrics }, ref
     const animationRef = useRef(null);
     const barsLeftRef = useRef([]);
     const barsRightRef = useRef([]);
+    const avatarImgRef = useRef(null);
+    const avatarYOffsetRef = useRef(0);
 
     // Expose drawing config to parent if needed
     useImperativeHandle(ref, () => ({
         getCanvas: () => canvasRef.current,
         getContext: () => canvasRef.current?.getContext('2d'),
     }));
+
+    useEffect(() => {
+        if (avatar && avatar.url) {
+            const img = new Image();
+            img.src = avatar.url;
+            img.onload = () => {
+                avatarImgRef.current = img;
+            };
+        } else {
+            avatarImgRef.current = null;
+        }
+    }, [avatar]);
 
     useEffect(() => {
         if (!audioRef.current) return;
@@ -106,8 +120,59 @@ const Visualizer = forwardRef(({ audioRef, isPlaying, onBassPulse, lyrics }, ref
 
             // Bass detection (use Left channel or average?)
             // Let's use max of both to be responsive
+            // Calculate Bass Energy (Average of first 5 bins)
+            const bassBinCount = 5;
+            let bassSum = 0;
+            for (let i = 0; i < bassBinCount; i++) {
+                // Use max of left/right for impact
+                bassSum += Math.max(leftDataArray[i], rightDataArray[i]);
+            }
+            const bassAvg = bassSum / bassBinCount; // 0-255 Range
+
+            // Map to Target Offset (Max 12% of height)
+            // "Follow the rising" -> Direct mapping
+            const targetOffset = - (bassAvg / 255) * (height * 0.12);
+
+            // Smooth updates (Lerp) to prevent jitter, but keep it snappy
+            const smoothing = 0.4;
+            avatarYOffsetRef.current += (targetOffset - avatarYOffsetRef.current) * smoothing;
+
             if (detectBass(leftDataArray) || detectBass(rightDataArray)) {
                 onBassPulse();
+            }
+
+            // Draw Avatar
+            if (avatarImgRef.current) {
+                const img = avatarImgRef.current;
+
+                // Base size is 0.6 of min dimension
+                const baseSize = Math.min(width, height) * 0.6;
+                // Constant size
+                const size = baseSize;
+
+                const x = (width - size) / 2;
+                // Add offset to Y
+                const y = ((height - size) / 2) + avatarYOffsetRef.current;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(width / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+                ctx.clip();
+
+                // Draw image to fill the circle
+                // We want to crop center square
+                const imgSize = Math.min(img.width, img.height);
+                const sx = (img.width - imgSize) / 2;
+                const sy = (img.height - imgSize) / 2;
+
+                ctx.drawImage(img, sx, sy, imgSize, imgSize, x, y, size, size);
+
+                // Optional: Add a border
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.stroke();
+
+                ctx.restore();
             }
 
             // Draw using stereo utility

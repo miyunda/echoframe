@@ -15,7 +15,7 @@ EchoFrame is a high-performance, purely client-side web application for generati
 
 Demo site：https://ef.miyunda.com
 
-[![EchoFrame Demo](http://img.youtube.com/vi/fg8wbHtZQUI/0.jpg)](http://www.youtube.com/watch?v=fg8wbHtZQUI)
+[![Demo video](http://img.youtube.com/vi/fg8wbHtZQUI/0.jpg)](http://www.youtube.com/watch?v=fg8wbHtZQUI)
 
 ---
 

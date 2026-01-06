@@ -13,6 +13,10 @@ EchoFrame is a high-performance, purely client-side web application for generati
 - **🥁 Deterministic Shake**: Stabilized shake effect triggered by bass frequencies. The render logic ensures that the preview and the exported file are identical.
 - **🔒 Privacy First**: All processing happens in the user's browser. Your audio and images never leave your device.
 
+Demo site：https://ef.miyunda.com
+
+[![Demo video](http://img.youtube.com/vi/fg8wbHtZQUI/0.jpg)](http://www.youtube.com/watch?v=fg8wbHtZQUI)
+
 ---
 
 ## 🛠 Tech Stack

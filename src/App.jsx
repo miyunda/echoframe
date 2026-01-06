@@ -98,7 +98,7 @@ export default function App() {
     }, [isPlaying]);
 
     return (
-        <div className="relative min-h-screen w-full flex flex-col items-center justify-center p-6 sm:p-12 overflow-hidden bg-base text-text">
+        <div className="relative min-h-screen w-full flex flex-col items-center justify-center p-6 sm:p-12 bg-base text-text">
             {/* Background Glow */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-brand-start/10 blur-[120px] rounded-full pointer-events-none" />
 

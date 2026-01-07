@@ -361,8 +361,8 @@ export default function Preview({ image, audio, audioRef, isPlaying, setIsPlayin
                                 </div>
                             </div>
                             <div className="space-y-4">
-                                <h4 className="text-text text-5xl font-black tracking-tighter uppercase italic">Synthesis Ready</h4>
-                                <p className="text-iris text-lg max-w-[360px] leading-relaxed font-medium">
+                                <h4 className="text-text text-5xl font-black tracking-tighter uppercase italic">视频合成完毕</h4>
+                                <p className="text-iris text-lg max-w-[360px] leading-relaxed font-medium mx-auto">
                                     视频已在浏览器内封装完成，没有任何信息留在服务器端
                                 </p>
                             </div>

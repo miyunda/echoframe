@@ -12,6 +12,7 @@ EchoFrame is a high-performance, purely client-side web application for generati
 - **🚨 Police-Light Aesthetics**: Automatic stereo channel detection. Left channel (Red) and Right channel (Blue) jump independently for a professional monitoring vibe.
 - **🥁 Deterministic Shake**: Stabilized shake effect triggered by bass frequencies. The render logic ensures that the preview and the exported file are identical.
 - **🔒 Privacy First**: All processing happens in the user's browser. Your audio and images never leave your device.
+- **📜 Bilingual Lyric Sync**: Supports `.lrc` files with dual-language lines using the `|` delimiter (e.g., `[00:00.00]Hello | 你好`). The first part is displayed as the main text, and the second part as the translation.
 
 Demo site：https://ef.miyunda.com
 
@@ -98,7 +99,7 @@ EchoFrame is driven by **Vibe Coding**. If you find this tool useful, give it a 
 
 ## ToDo
 
-- **📜 Bilingual Lyric Sync**: Supports `.lrc` files with dual-language lines using the `|` delimiter (e.g., `[00:00.00]Hello | 你好`). The first part is displayed as the main text, and the second part as the translation.
+- [ ] **Ultra-Fast Export**: WebGPU based rendering pipeline for 10x faster export speed.
 
 ## 📄 License
 

@@ -98,7 +98,7 @@ EchoFrame is driven by **Vibe Coding**. If you find this tool useful, give it a 
 
 ## ToDo
 
-- [ ] **📜 Bilingual Lyric Sync**: Advanced `.lrc` parser supporting dual-language subtitles (Original/Translation) with precise synchronization.
+- **📜 Bilingual Lyric Sync**: Supports `.lrc` files with dual-language lines using the `|` delimiter (e.g., `[00:00.00]Hello | 你好`). The first part is displayed as the main text, and the second part as the translation.
 
 ## 📄 License
 

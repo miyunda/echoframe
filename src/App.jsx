@@ -51,10 +51,10 @@ export default function App() {
 
             // Generate Test Lyrics
             const lrcContent = `
-[00:00.00] 您现在听到的是：左声道 (440Hz A4)
-[00:02.00] 您现在听到的是：双声道中间 (880Hz A5)
-[00:04.00] 您现在听到的是：右声道 (440Hz A4)
-[00:06.00] 测试结束
+[00:00.00] 您现在听到的是：左声道 (440Hz A4) | You are listening to: Left Channel (440Hz A4)
+[00:02.00] 您现在听到的是：双声道中间 (880Hz A5) | You are listening to: Center (880Hz A5)
+[00:04.00] 您现在听到的是：右声道 (440Hz A4) | You are listening to: Right Channel (440Hz A4)
+[00:06.00] 测试结束 | Test Finished
 `;
             setLyrics(parseLRC(lrcContent));
         } catch (e) {

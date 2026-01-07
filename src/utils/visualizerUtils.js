@@ -236,7 +236,7 @@ export const drawLyrics = (ctx, lyrics, currentTime, width, height) => {
     const fontSize = Math.max(24, width / 25); // Slightly larger min size
     const x = width / 2;
     const y = height * 0.92 + yOffset; // 92% adjusted position
-    const maxWidth = width * 0.85; // Max width 85% of canvas
+    const maxWidth = width * 0.95; // Max width 95% of canvas
     const lineHeight = fontSize * 1.3;
 
     ctx.font = `bold ${fontSize}px "Inter", sans-serif`;
@@ -256,8 +256,65 @@ export const drawLyrics = (ctx, lyrics, currentTime, width, height) => {
     ctx.strokeStyle = '#000000';
     ctx.fillStyle = '#ffffff';
 
-    // Word Wrap Logic
-    const words = currentLyric.text.split(' ');
+    // Word Wrap Logic for Main Text
+    const lines = getLines(ctx, currentLyric.text, maxWidth);
+
+    // Word Wrap Logic for Translation
+    let translationLines = [];
+    if (currentLyric.translation) {
+        ctx.font = `medium ${fontSize * 0.75}px "Inter", sans-serif`; // Smaller font for translation
+        translationLines = getLines(ctx, currentLyric.translation, maxWidth);
+        // Reset font for main text drawing
+        ctx.font = `bold ${fontSize}px "Inter", sans-serif`;
+    }
+
+    // Calculate total height to center the block or position from bottom
+    // We are positioning from bottom: 'y' is the bottom anchor.
+    // Structure:
+    // [Main Text Line 1]
+    // [Main Text Line 2]
+    // (Gap)
+    // [Translation Line 1]
+    // [Translation Line 2]
+
+    const translationLineHeight = fontSize * 0.75 * 1.4;
+    const gap = fontSize * 0.5;
+
+    // Draw Translation First (Bottom)
+    let currentY = y;
+
+    if (translationLines.length > 0) {
+        ctx.font = `500 ${fontSize * 0.75}px "Inter", sans-serif`;
+        ctx.fillStyle = '#e0e0e0'; // Slightly dimmer white
+        ctx.lineWidth = 4; // Thinner stroke
+
+        translationLines.reverse().forEach((line) => {
+            ctx.strokeText(line, x, currentY);
+            ctx.fillText(line, x, currentY);
+            currentY -= translationLineHeight;
+        });
+
+        currentY -= gap; // Gap between translation and main text
+    }
+
+    // Draw Main Text (Above Translation)
+    ctx.font = `bold ${fontSize}px "Inter", sans-serif`;
+    ctx.fillStyle = '#ffffff';
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = '#000000';
+
+    lines.reverse().forEach((line) => {
+        ctx.strokeText(line, x, currentY);
+        ctx.fillText(line, x, currentY);
+        currentY -= lineHeight;
+    });
+
+    ctx.restore();
+};
+
+// Helper for word wrapping
+const getLines = (ctx, text, maxWidth) => {
+    const words = text.split(' ');
     let lines = [];
     let currentLine = words[0];
 
@@ -272,18 +329,5 @@ export const drawLyrics = (ctx, lyrics, currentTime, width, height) => {
         }
     }
     lines.push(currentLine);
-
-    // Draw Lines (Stack upwards from bottom to preserve bottom margin)
-    lines.forEach((line, index) => {
-        // Calculate Y for this line.
-        // The last line (lines.length - 1) should be at 'y'.
-        // Previous lines should go up by lineHeight.
-        const lineIndexFromBottom = (lines.length - 1) - index;
-        const lineY = y - (lineIndexFromBottom * lineHeight);
-
-        ctx.strokeText(line, x, lineY);
-        ctx.fillText(line, x, lineY);
-    });
-
-    ctx.restore();
+    return lines;
 };

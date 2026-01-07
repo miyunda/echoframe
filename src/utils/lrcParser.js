@@ -4,7 +4,7 @@
  * Time is in seconds.
  * 
  * @param {string} lrcString - The raw LRC content
- * @returns {Array<{time: number, text: string}>} sorted array of lyric objects
+ * @returns {Array<{time: number, text: string, translation: string|null}>} sorted array of lyric objects
  */
 export const parseLRC = (lrcString) => {
     if (!lrcString) return [];
@@ -18,7 +18,16 @@ export const parseLRC = (lrcString) => {
         const matches = [...line.matchAll(timeRegex)];
         if (matches.length > 0) {
             // Extract the text part (everything after the last bracket)
-            const text = line.replace(timeRegex, '').trim();
+            let rawText = line.replace(timeRegex, '').trim();
+            let text = rawText;
+            let translation = null;
+
+            // Check for bilingual delimiter
+            if (rawText.includes('|')) {
+                const parts = rawText.split('|').map(p => p.trim());
+                text = parts[0];
+                translation = parts[1] || null;
+            }
 
             matches.forEach(match => {
                 const minutes = parseInt(match[1], 10);
@@ -33,7 +42,8 @@ export const parseLRC = (lrcString) => {
 
                 lyrics.push({
                     time: totalSeconds,
-                    text: text
+                    text: text,
+                    translation: translation
                 });
             });
         }

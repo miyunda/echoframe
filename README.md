@@ -101,6 +101,11 @@ EchoFrame is driven by **Vibe Coding**. If you find this tool useful, give it a 
 
 - [ ] **Ultra-Fast Export**: WebGPU based rendering pipeline for 10x faster export speed.
 
+## 📌 Project Planning
+
+- [Project rules](docs/project-rules.md)
+- [Roadmap](docs/roadmap.md)
+
 ## 📄 License
 
 This project is licensed under the MIT License.

@@ -2,6 +2,8 @@ import React, { useCallback } from 'react';
 import { Upload, CheckCircle2 } from 'lucide-react';
 
 export default function FileUpload({ type, accept, icon, label, file, onUpload }) {
+    const displayName = file?.name || file?.file?.name;
+
     const handleChange = (e) => {
         const selectedFile = e.target.files[0];
         if (selectedFile) {
@@ -26,7 +28,7 @@ export default function FileUpload({ type, accept, icon, label, file, onUpload }
                     <div className="space-y-1">
                         <p className="text-text font-bold text-lg leading-none">{label}</p>
                         <p className="text-subtle text-xs font-mono uppercase tracking-tighter">
-                            {file ? file.file.name : `点击或拖拽上传${type === 'image' ? '图片' : '音频'}`}
+                            {displayName || `点击或拖拽上传${type === 'image' ? '图片' : '音频'}`}
                         </p>
                     </div>
                 </div>

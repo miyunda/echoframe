@@ -142,3 +142,47 @@ export async function generateDebugAudioBlob() {
     const renderedBuffer = await ctx.startRendering();
     return bufferToWave(renderedBuffer, renderedBuffer.length);
 }
+
+export async function generateDebugBackgroundBlob() {
+    const width = 1920;
+    const height = 1080;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, '#07111f');
+    gradient.addColorStop(0.45, '#173656');
+    gradient.addColorStop(1, '#f58f45');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+
+    const glow = ctx.createRadialGradient(width * 0.7, height * 0.3, 40, width * 0.7, height * 0.3, 460);
+    glow.addColorStop(0, 'rgba(255, 214, 153, 0.95)');
+    glow.addColorStop(0.35, 'rgba(255, 129, 84, 0.4)');
+    glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    for (let i = 0; i < 14; i += 1) {
+        const x = width * (0.08 + i * 0.06);
+        const y = height * (0.18 + (i % 4) * 0.12);
+        const radius = 22 + (i % 3) * 18;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(width * 0.08, height * 0.78);
+    ctx.bezierCurveTo(width * 0.3, height * 0.56, width * 0.62, height * 0.95, width * 0.92, height * 0.72);
+    ctx.stroke();
+
+    return new Promise((resolve) => {
+        canvas.toBlob((blob) => resolve(blob), 'image/png');
+    });
+}

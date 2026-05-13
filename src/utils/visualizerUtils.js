@@ -185,7 +185,7 @@ export const drawStereoBars = (ctx, leftData, rightData, barsStateLeft, barsStat
  * @param {number} width - Canvas width
  * @param {number} height - Canvas height
  */
-export const drawLyrics = (ctx, lyrics, currentTime, width, height) => {
+export const drawLyrics = (ctx, lyrics, currentTime, width, height, options = {}) => {
     if (!lyrics || lyrics.length === 0) return;
 
     // 1. Find the current lyric using robust reduce logic
@@ -233,10 +233,11 @@ export const drawLyrics = (ctx, lyrics, currentTime, width, height) => {
 
 
     // Position & Style
-    const fontSize = Math.max(24, width / 25); // Slightly larger min size
+    const fontSize = Math.max(24, options.fontSize || width / 25); // Slightly larger min size
     const x = width / 2;
-    const y = height * 0.92 + yOffset; // 92% adjusted position
-    const maxWidth = width * 0.95; // Max width 95% of canvas
+    const anchorY = options.anchorY ?? 0.92;
+    const y = height * anchorY + yOffset; // 92% adjusted position
+    const maxWidth = width * (options.maxWidthRatio || 0.95); // Max width 95% of canvas
     const lineHeight = fontSize * 1.3;
 
     ctx.font = `bold ${fontSize}px "Inter", sans-serif`;
@@ -244,8 +245,8 @@ export const drawLyrics = (ctx, lyrics, currentTime, width, height) => {
     ctx.textBaseline = 'middle';
 
     // Shadow
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-    ctx.shadowBlur = 4;
+    ctx.shadowColor = options.shadowColor || 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = options.shadowBlur || 4;
     ctx.shadowOffsetY = 2;
 
     ctx.globalAlpha = opacity;
@@ -253,8 +254,8 @@ export const drawLyrics = (ctx, lyrics, currentTime, width, height) => {
     // Stroke (Black, 4-6px)
     ctx.lineJoin = 'round';
     ctx.lineWidth = 6;
-    ctx.strokeStyle = '#000000';
-    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = options.strokeColor || '#000000';
+    ctx.fillStyle = options.mainColor || '#ffffff';
 
     // Word Wrap Logic for Main Text
     const lines = getLines(ctx, currentLyric.text, maxWidth);
@@ -285,7 +286,7 @@ export const drawLyrics = (ctx, lyrics, currentTime, width, height) => {
 
     if (translationLines.length > 0) {
         ctx.font = `500 ${fontSize * 0.75}px "Inter", sans-serif`;
-        ctx.fillStyle = '#e0e0e0'; // Slightly dimmer white
+        ctx.fillStyle = options.translationColor || '#e0e0e0'; // Slightly dimmer white
         ctx.lineWidth = 4; // Thinner stroke
 
         translationLines.reverse().forEach((line) => {
@@ -299,9 +300,9 @@ export const drawLyrics = (ctx, lyrics, currentTime, width, height) => {
 
     // Draw Main Text (Above Translation)
     ctx.font = `bold ${fontSize}px "Inter", sans-serif`;
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = options.mainColor || '#ffffff';
     ctx.lineWidth = 6;
-    ctx.strokeStyle = '#000000';
+    ctx.strokeStyle = options.strokeColor || '#000000';
 
     lines.reverse().forEach((line) => {
         ctx.strokeText(line, x, currentY);
@@ -314,18 +315,25 @@ export const drawLyrics = (ctx, lyrics, currentTime, width, height) => {
 
 // Helper for word wrapping
 const getLines = (ctx, text, maxWidth) => {
-    const words = text.split(' ');
-    let lines = [];
-    let currentLine = words[0];
+    if (!text) return [''];
 
-    for (let i = 1; i < words.length; i++) {
-        const word = words[i];
-        const width = ctx.measureText(currentLine + " " + word).width;
+    const hasWhitespace = /\s/.test(text);
+    const tokens = hasWhitespace ? text.split(/\s+/) : Array.from(text);
+    if (tokens.length === 0) return [''];
+
+    let lines = [];
+    let currentLine = tokens[0];
+
+    for (let i = 1; i < tokens.length; i++) {
+        const token = tokens[i];
+        const joiner = hasWhitespace ? ' ' : '';
+        const candidate = currentLine + joiner + token;
+        const width = ctx.measureText(candidate).width;
         if (width < maxWidth) {
-            currentLine += " " + word;
+            currentLine = candidate;
         } else {
             lines.push(currentLine);
-            currentLine = word;
+            currentLine = token;
         }
     }
     lines.push(currentLine);

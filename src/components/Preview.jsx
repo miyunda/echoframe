@@ -1,10 +1,11 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Play, Pause, X, Download, Loader2, CheckCircle2, Zap, Cog } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Play, Pause, X, Download, CheckCircle2, Zap } from 'lucide-react';
 import Visualizer from './Visualizer';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
-import { drawStereoBars, detectBass, drawLyrics } from '../utils/visualizerUtils';
 import { extractFrequencyData } from '../utils/offlineProcessor';
+import { buildFrameState, createSceneRenderState, renderSceneFrame } from '../utils/sceneRenderer';
+import { getScenePreset } from '../utils/scenePresets';
 
 const EXPORT_STAGES = {
     IDLE: 'idle',
@@ -15,18 +16,11 @@ const EXPORT_STAGES = {
     READY: 'ready'
 };
 
-export default function Preview({ image, audio, audioRef, isPlaying, setIsPlaying, onClear, lyrics, avatar }) {
-    const [bassScale, setBassScale] = useState(1);
+export default function Preview({ background, audio, audioRef, isPlaying, setIsPlaying, onClear, lyrics, avatar, scenePresetId }) {
     const [exportStage, setExportStage] = useState(EXPORT_STAGES.IDLE);
     const [exportProgress, setExportProgress] = useState(0);
     const [downloadUrl, setDownloadUrl] = useState(null);
-    const visualizerRef = useRef(null);
     const ffmpegRef = useRef(new FFmpeg());
-
-    const handleBassPulse = useCallback(() => {
-        setBassScale(1.05);
-        setTimeout(() => setBassScale(1), 100);
-    }, []);
 
     useEffect(() => {
         return () => {
@@ -90,16 +84,17 @@ export default function Preview({ image, audio, audioRef, isPlaying, setIsPlayin
             const height = 1080;
             const canvas = new OffscreenCanvas(width, height);
             const ctx = canvas.getContext('2d');
-            const bgImage = await createImageBitmap(image.file);
+            const bgImage = background?.type === 'image' && background.file
+                ? await createImageBitmap(background.file)
+                : null;
+            const preset = getScenePreset(scenePresetId);
             // Load Avatar Bitmap if exists
             let avatarImage = null;
             if (avatar && avatar.file) {
                 avatarImage = await createImageBitmap(avatar.file);
             }
 
-            const barsStateLeft = Array(256).fill(0);
-            const barsStateRight = Array(256).fill(0);
-            let currentAvatarY = 0;
+            const renderState = createSceneRenderState(leftFrequencyDataSequence[0]?.length || 256);
 
             for (let i = 0; i < totalFrames; i++) {
                 // Calculate precise virtual time for this frame
@@ -107,92 +102,27 @@ export default function Preview({ image, audio, audioRef, isPlaying, setIsPlayin
 
                 const leftData = leftFrequencyDataSequence[i] || leftFrequencyDataSequence[leftFrequencyDataSequence.length - 1];
                 const rightData = rightFrequencyDataSequence[i] || rightFrequencyDataSequence[rightFrequencyDataSequence.length - 1];
-                ctx.clearRect(0, 0, width, height);
-
-                // Use max bass for scale effect
-                const isBass = detectBass(leftData) || detectBass(rightData);
-                const scale = isBass ? 1.05 : 1;
-
-                ctx.save();
-                ctx.translate(width / 2, height / 2);
-                ctx.scale(scale, scale);
-                ctx.drawImage(bgImage, -width / 2, -height / 2, width, height);
-                ctx.restore();
-
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-                ctx.fillRect(0, 0, width, height);
-
-                // Draw Avatar (Offline Rendering)
-                if (avatarImage) {
-                    // Calculate Bass Energy
-                    const bassBinCount = 5;
-                    let bassSum = 0;
-                    for (let j = 0; j < bassBinCount; j++) {
-                        bassSum += Math.max(leftData[j] || 0, rightData[j] || 0);
-                    }
-                    const bassAvg = bassSum / bassBinCount;
-
-                    // Target Offset
-                    const targetOffset = - (bassAvg / 255) * (height * 0.12);
-
-                    // Apply Smoothing
-                    const smoothing = 0.4;
-                    currentAvatarY += (targetOffset - currentAvatarY) * smoothing;
-
-                    // Keep size constant
-                    const size = Math.min(width, height) * 0.6;
-
-                    const x = (width - size) / 2;
-                    // Add offset to Y
-                    const y = ((height - size) / 2) + currentAvatarY;
-
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.arc(width / 2, y + size / 2, size / 2, 0, Math.PI * 2);
-                    ctx.clip();
-
-                    const imgSize = Math.min(avatarImage.width, avatarImage.height);
-                    const sx = (avatarImage.width - imgSize) / 2;
-                    const sy = (avatarImage.height - imgSize) / 2;
-
-                    ctx.drawImage(avatarImage, sx, sy, imgSize, imgSize, x, y, size, size);
-
-                    // Optional: Add a border (match Visualizer)
-                    ctx.lineWidth = 4;
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-                    ctx.stroke();
-
-                    ctx.restore();
-                }
-
-
-                const vizWidth = width * 0.7;
-                const vizHeight = height * 0.3;
-                ctx.save();
-                ctx.translate((width - vizWidth) / 2, height * 0.75);
-                drawStereoBars(
-                    ctx,
+                const frameState = buildFrameState({
+                    time: virtualTime,
+                    duration: totalFrames / FPS,
                     leftData,
                     rightData,
-                    barsStateLeft,
-                    barsStateRight,
-                    vizWidth,
-                    vizHeight,
-                    { gravity: 3.0 }
-                );
-                ctx.restore();
+                    lyrics,
+                });
 
-                // Draw Title (Moved to Top)
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 60px Inter, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(audio.name, width / 2, height * 0.35); // 35% height (Above visualizer)
-
-                // Draw Lyrics (Will be drawn at bottom by visualizerUtils)
-                if (lyrics) {
-                    // Use calculated virtualTime instead of i / 30
-                    drawLyrics(ctx, lyrics, virtualTime, width, height);
-                }
+                renderSceneFrame({
+                    ctx,
+                    width,
+                    height,
+                    preset,
+                    frameState,
+                    assets: {
+                        backgroundImage: bgImage,
+                        avatarImage,
+                        audioName: audio.name,
+                    },
+                    renderState,
+                });
 
                 // Convert to PNG blob and write to memory FS
                 const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.9 });
@@ -281,33 +211,16 @@ export default function Preview({ image, audio, audioRef, isPlaying, setIsPlayin
     return (
         <div className="w-full flex flex-col gap-6">
             <div className="w-full relative aspect-video sm:aspect-[21/9] rounded-2xl overflow-hidden glass group animate-in fade-in zoom-in duration-500 shadow-2xl shadow-black/50">
-                <div
-                    className="absolute inset-0 bg-cover bg-center transition-transform duration-300 ease-out"
-                    style={{
-                        backgroundImage: `url(${image.url})`,
-                        transform: `scale(${bassScale})`
-                    }}
-                />
-
-                <div className="absolute inset-0 bg-surface/60 backdrop-blur-[2px]" />
-
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-8 pointer-events-none">
-                    {/* Title Section (Moved to Top) */}
-                    <div className="mb-12 text-center space-y-1 text-white text-opacity-80">
-                        <h3 className="text-xl font-bold tracking-tight drop-shadow-lg">{audio.name}</h3>
-                        <p className="text-white/40 text-[10px] uppercase tracking-[0.4em] font-mono">Generated by EchoFrame</p>
-                    </div>
-
-                    <div className="w-full max-w-2xl h-48 flex items-end justify-center">
-                        <Visualizer
-                            ref={visualizerRef}
-                            audioRef={audioRef}
-                            isPlaying={isPlaying}
-                            onBassPulse={handleBassPulse}
-                            lyrics={lyrics}
-                            avatar={avatar}
-                        />
-                    </div>
+                <div className="absolute inset-0">
+                    <Visualizer
+                        audioRef={audioRef}
+                        isPlaying={isPlaying}
+                        lyrics={lyrics}
+                        avatar={avatar}
+                        background={background}
+                        audioName={audio.name}
+                        scenePresetId={scenePresetId}
+                    />
                 </div>
 
                 {exportStage === EXPORT_STAGES.IDLE && (
@@ -383,6 +296,17 @@ export default function Preview({ image, audio, audioRef, isPlaying, setIsPlayin
                         {exportStage === EXPORT_STAGES.IDLE ? (isPlaying ? 'Auditing' : 'Lobby') : 'Heavy Truck Core'}
                     </span>
                 </div>
+
+                {exportStage === EXPORT_STAGES.IDLE && (
+                    <button
+                        type="button"
+                        onClick={onClear}
+                        className="absolute top-5 right-5 z-20 flex items-center gap-2 rounded-full border border-white/15 bg-black/25 px-4 py-2 text-xs font-mono uppercase tracking-[0.25em] text-white/70 transition hover:bg-black/40 hover:text-white"
+                    >
+                        <X className="w-4 h-4" />
+                        Reset
+                    </button>
+                )}
             </div>
 
             {

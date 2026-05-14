@@ -188,18 +188,23 @@ export const drawStereoBars = (ctx, leftData, rightData, barsStateLeft, barsStat
 export const drawLyrics = (ctx, lyrics, currentTime, width, height, options = {}) => {
     if (!lyrics || lyrics.length === 0) return;
 
-    // 1. Find the current lyric using robust reduce logic
-    const activeIndex = lyrics.reduce((prev, curr, index) =>
-        (curr.time <= currentTime) ? index : prev, -1);
+    const getCueStart = (cue) => cue.startTime ?? cue.time ?? 0;
+    const getCueEnd = (cue, nextCue) => cue.endTime ?? nextCue?.startTime ?? nextCue?.time ?? (getCueStart(cue) + 4.0);
+
+    const activeIndex = lyrics.findIndex((cue, index) => {
+        const nextCue = lyrics[index + 1];
+        const startTime = getCueStart(cue);
+        const endTime = getCueEnd(cue, nextCue);
+        return currentTime >= startTime && currentTime < endTime;
+    });
 
     if (activeIndex === -1) return;
 
     const currentLyric = lyrics[activeIndex];
     const nextLyric = lyrics[activeIndex + 1];
 
-    // Determine duration: until next lyric or default 4s
-    const startTime = currentLyric.time;
-    const endTime = nextLyric ? nextLyric.time : startTime + 4.0;
+    const startTime = getCueStart(currentLyric);
+    const endTime = getCueEnd(currentLyric, nextLyric);
     const duration = endTime - startTime;
     const timeInLyric = currentTime - startTime;
 
@@ -316,6 +321,11 @@ export const drawLyrics = (ctx, lyrics, currentTime, width, height, options = {}
 // Helper for word wrapping
 const getLines = (ctx, text, maxWidth) => {
     if (!text) return [''];
+
+    const paragraphs = text.split('\n').map((line) => line.trim()).filter(Boolean);
+    if (paragraphs.length > 1) {
+        return paragraphs.flatMap((paragraph) => getLines(ctx, paragraph, maxWidth));
+    }
 
     const hasWhitespace = /\s/.test(text);
     const tokens = hasWhitespace ? text.split(/\s+/) : Array.from(text);

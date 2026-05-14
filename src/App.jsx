@@ -7,6 +7,7 @@ import { parseLRC } from './utils/lrcParser';
 import { DEFAULT_SCENE_PRESET_ID, SCENE_PRESETS } from './utils/scenePresets';
 import { assertSupportedImageFile, createAssetRecord, createGeneratedBackgroundAsset, normalizeImageFile } from './utils/imageAssets';
 import { createBackgroundTrack, DEFAULT_TRANSITION_DURATION, MOTION_PRESETS, MOTION_PRESET_LABELS, TRANSITION_STYLES, TRANSITION_STYLE_LABELS } from './utils/backgroundTrack';
+import { parseSubtitleByFilename } from './utils/subtitleParser';
 
 export default function App() {
     const generatedBackgroundRef = useRef(createGeneratedBackgroundAsset());
@@ -158,9 +159,14 @@ export default function App() {
         const reader = new FileReader();
         reader.onload = (e) => {
             const text = e.target.result;
-            const parsed = parseLRC(text);
-            setLyrics(parsed);
-            setLyricsAssetName(file.name);
+            try {
+                const parsed = parseSubtitleByFilename(file.name, text);
+                setLyrics(parsed);
+                setLyricsAssetName(file.name);
+            } catch (error) {
+                console.error('Failed to parse subtitle file:', error);
+                alert(`字幕文件解析失败：${error.message}`);
+            }
         };
         reader.readAsText(file);
     };
@@ -512,9 +518,9 @@ export default function App() {
                             />
                             <FileUpload
                                 type="text"
-                                accept=".lrc,.txt"
+                                accept=".lrc,.srt,.vtt,text/vtt,application/x-subrip"
                                 icon={<FileText className="w-8 h-8 text-subtle" />}
-                                label="上传歌词文件 (LRC) - 可选"
+                                label="上传字幕文件 (LRC/SRT/VTT) - 可选"
                                 onUpload={handleLrcUpload}
                                 file={lyricsAssetName ? { name: lyricsAssetName } : null}
                             />

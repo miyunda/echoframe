@@ -116,6 +116,37 @@ export const SCENE_PRESETS = [
             visualizerY: 0.78,
             lyricY: 0.9,
         }
+    },
+    {
+        id: 'vinyl-cover',
+        name: 'Vinyl Cover',
+        description: 'A turntable-inspired composition with a rotating record and outer spectrum ring.',
+        style: 'vinyl',
+        title: '黑胶封面',
+        theme: {
+            backgroundOverlay: 'rgba(10, 7, 6, 0.58)',
+            accent: '#fff7eb',
+            subtitle: 'rgba(245, 226, 196, 0.68)',
+            halo: 'rgba(255, 180, 118, 0.22)',
+            leftBarColorStart: '#8b5e34',
+            leftBarColorEnd: '#ffd089',
+            rightBarColorStart: '#5f3a26',
+            rightBarColorEnd: '#ff8d6b',
+            avatarBorder: 'rgba(255, 244, 228, 0.95)',
+            vinylShadow: 'rgba(0, 0, 0, 0.42)',
+            vinylGroove: 'rgba(255, 255, 255, 0.06)',
+            vinylLabel: 'rgba(255, 242, 223, 0.18)',
+        },
+        layout: {
+            avatarSize: 0.34,
+            avatarTravel: 0.03,
+            titleY: 0.13,
+            titleSize: 0.043,
+            visualizerWidth: 0.8,
+            visualizerHeight: 0.1,
+            visualizerY: 0.82,
+            lyricY: 0.9,
+        }
     }
 ];
 

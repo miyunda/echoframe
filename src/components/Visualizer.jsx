@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { buildFrameState, createSceneRenderState, renderSceneFrame } from '../utils/sceneRenderer';
 import { getScenePreset } from '../utils/scenePresets';
+import { createBackgroundTrack, resolveBackgroundFrame } from '../utils/backgroundTrack';
 
 const Visualizer = forwardRef(({ audioRef, isPlaying, lyrics, avatar, background, audioName, scenePresetId }, ref) => {
     const canvasRef = useRef(null);
@@ -10,6 +11,7 @@ const Visualizer = forwardRef(({ audioRef, isPlaying, lyrics, avatar, background
     const animationRef = useRef(null);
     const avatarImgRef = useRef(null);
     const backgroundImgRef = useRef(null);
+    const backgroundImagesRef = useRef([]);
     const renderStateRef = useRef(createSceneRenderState());
     const presetRef = useRef(getScenePreset(scenePresetId));
 
@@ -60,6 +62,26 @@ const Visualizer = forwardRef(({ audioRef, isPlaying, lyrics, avatar, background
     }, [avatar]);
 
     useEffect(() => {
+        if (background?.type === 'track' && background.items?.length) {
+            Promise.all(background.items.map((item) => new Promise((resolve, reject) => {
+                const img = new Image();
+                img.src = item.url;
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+            }))).then((images) => {
+                backgroundImagesRef.current = images;
+                backgroundImgRef.current = images[0] || null;
+                drawStillFrame();
+            }).catch((error) => {
+                console.error('Failed to load background track images:', error);
+                backgroundImagesRef.current = [];
+                backgroundImgRef.current = null;
+                drawStillFrame();
+            });
+            return;
+        }
+
+        backgroundImagesRef.current = [];
         if (background?.type === 'image' && background.url) {
             const img = new Image();
             img.src = background.url;
@@ -158,6 +180,13 @@ const Visualizer = forwardRef(({ audioRef, isPlaying, lyrics, avatar, background
             frameState,
             assets: {
                 backgroundImage: backgroundImgRef.current,
+                backgroundTrack: background?.type === 'track'
+                    ? createBackgroundTrack(background.items, frameState.duration, background.transition)
+                    : null,
+                backgroundImages: backgroundImagesRef.current,
+                backgroundFrame: background?.type === 'track'
+                    ? resolveBackgroundFrame(createBackgroundTrack(background.items, frameState.duration, background.transition), frameState.time)
+                    : null,
                 avatarImage: avatarImgRef.current,
                 audioName,
             },

@@ -1,4 +1,5 @@
 import { drawLyrics, drawStereoBars } from './visualizerUtils';
+import { getMotionTransform } from './backgroundTrack';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -14,6 +15,7 @@ export const createSceneRenderState = (bufferLength = 256) => ({
     barsStateLeft: Array(bufferLength).fill(0),
     barsStateRight: Array(bufferLength).fill(0),
     avatarYOffset: 0,
+    recordRotation: 0,
 });
 
 export const buildFrameState = ({ time, duration, leftData, rightData, lyrics }) => {
@@ -54,6 +56,45 @@ const drawBackgroundImage = (ctx, width, height, image, scale, driftX = 0, drift
 
     const x = (width - drawWidth) / 2 + driftX;
     const y = (height - drawHeight) / 2 + driftY;
+    ctx.drawImage(image, x, y, drawWidth, drawHeight);
+};
+
+const drawCenterCroppedCircleImage = (ctx, image, radius) => {
+    if (!image) return;
+
+    const imageSize = Math.min(image.width, image.height);
+    const sx = (image.width - imageSize) / 2;
+    const sy = (image.height - imageSize) / 2;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(image, sx, sy, imageSize, imageSize, -radius, -radius, radius * 2, radius * 2);
+    ctx.restore();
+};
+
+const drawTrackBackgroundImage = (ctx, width, height, image, motionPreset, progress, intensity = 1) => {
+    if (!image) return;
+
+    const transform = getMotionTransform(motionPreset, progress);
+    const frameRatio = width / height;
+    const imageRatio = image.width / image.height;
+
+    let drawWidth;
+    let drawHeight;
+    if (imageRatio > frameRatio) {
+        drawHeight = height * transform.scale;
+        drawWidth = drawHeight * imageRatio;
+    } else {
+        drawWidth = width * transform.scale;
+        drawHeight = drawWidth / imageRatio;
+    }
+
+    const maxOffsetX = Math.max(0, (drawWidth - width) / 2);
+    const maxOffsetY = Math.max(0, (drawHeight - height) / 2);
+    const x = (width - drawWidth) / 2 + transform.x * maxOffsetX * 2 * intensity;
+    const y = (height - drawHeight) / 2 + transform.y * maxOffsetY * 2 * intensity;
     ctx.drawImage(image, x, y, drawWidth, drawHeight);
 };
 
@@ -114,13 +155,47 @@ const drawGeneratedBackdrop = (ctx, width, height, preset, frameState) => {
     ctx.restore();
 };
 
-const drawBackdrop = (ctx, width, height, image, preset, frameState) => {
+const drawBackdrop = (ctx, width, height, image, preset, frameState, assets) => {
     const { theme, style } = preset;
     const energyLift = 1 + frameState.bassEnergy * (style === 'radial' ? 0.06 : 0.035);
     const driftX = Math.sin(frameState.time * 0.18) * width * 0.012;
     const driftY = Math.cos(frameState.time * 0.14) * height * 0.01;
 
-    if (image) {
+    if (assets?.backgroundFrame && assets?.backgroundImages?.length) {
+        const { currentItem, nextItem, localProgress, nextLocalProgress, transitionProgress } = assets.backgroundFrame;
+        const currentImage = assets.backgroundImages[currentItem.index];
+        const nextImage = nextItem ? assets.backgroundImages[nextItem.index] : null;
+        const transitionStyle = currentItem.transitionStyle || 'crossfade';
+
+        ctx.save();
+        ctx.globalAlpha = 1;
+        drawTrackBackgroundImage(ctx, width, height, currentImage, currentItem.motionPreset, localProgress, energyLift);
+        if (nextImage && transitionProgress > 0) {
+            ctx.globalAlpha = transitionProgress;
+            drawTrackBackgroundImage(ctx, width, height, nextImage, nextItem.motionPreset, nextLocalProgress, energyLift);
+        }
+        ctx.restore();
+
+        if (nextImage && transitionProgress > 0 && transitionStyle === 'flash') {
+            const flashStrength = Math.sin(transitionProgress * Math.PI);
+            const flashGradient = ctx.createRadialGradient(
+                width * 0.5,
+                height * 0.42,
+                width * 0.06,
+                width * 0.5,
+                height * 0.42,
+                width * 0.7
+            );
+            flashGradient.addColorStop(0, `rgba(255, 250, 240, ${0.24 + flashStrength * 0.22})`);
+            flashGradient.addColorStop(0.45, `rgba(255, 236, 214, ${0.14 + flashStrength * 0.12})`);
+            flashGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            ctx.fillStyle = flashGradient;
+            ctx.fillRect(0, 0, width, height);
+            ctx.restore();
+        }
+    } else if (image) {
         drawBackgroundImage(ctx, width, height, image, energyLift, driftX, driftY);
     } else {
         drawGeneratedBackdrop(ctx, width, height, preset, frameState);
@@ -181,6 +256,96 @@ const drawAvatar = (ctx, width, height, avatarImage, preset, frameState, renderS
     ctx.restore();
 
     return { x, y, size, centerX, centerY };
+};
+
+const drawVinylRecord = (ctx, width, height, preset, frameState, renderState, coverImage) => {
+    const size = Math.min(width, height) * 0.38;
+    const centerX = width / 2;
+    const centerY = height * 0.47;
+    const radius = size / 2;
+    const targetOffset = -(frameState.bassEnergy * height * preset.layout.avatarTravel);
+    renderState.avatarYOffset += (targetOffset - renderState.avatarYOffset) * 0.22;
+    renderState.recordRotation += 0.012 + frameState.energy * 0.006;
+    const yOffset = renderState.avatarYOffset * 0.5;
+
+    ctx.save();
+    ctx.translate(centerX, centerY + yOffset);
+    ctx.rotate(renderState.recordRotation);
+
+    const vinylGradient = ctx.createRadialGradient(0, 0, radius * 0.16, 0, 0, radius);
+    vinylGradient.addColorStop(0, 'rgba(70, 55, 46, 1)');
+    vinylGradient.addColorStop(0.3, 'rgba(24, 21, 20, 1)');
+    vinylGradient.addColorStop(1, 'rgba(6, 6, 7, 1)');
+    ctx.fillStyle = vinylGradient;
+    ctx.shadowColor = preset.theme.vinylShadow || 'rgba(0, 0, 0, 0.35)';
+    ctx.shadowBlur = radius * 0.22;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = preset.theme.vinylGroove || 'rgba(255, 255, 255, 0.05)';
+    for (let i = 0; i < 14; i += 1) {
+        const grooveRadius = radius * (0.28 + i * 0.048);
+        ctx.lineWidth = i % 3 === 0 ? 1.5 : 1;
+        ctx.globalAlpha = i % 2 === 0 ? 0.85 : 0.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, grooveRadius, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.save();
+    ctx.rotate(-renderState.recordRotation * 0.35);
+    const sheen = ctx.createLinearGradient(-radius, -radius * 0.2, radius, radius * 0.28);
+    sheen.addColorStop(0, 'rgba(255, 255, 255, 0)');
+    sheen.addColorStop(0.42, 'rgba(255, 255, 255, 0.02)');
+    sheen.addColorStop(0.5, 'rgba(255, 255, 255, 0.12)');
+    sheen.addColorStop(0.58, 'rgba(255, 255, 255, 0.02)');
+    sheen.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.strokeStyle = sheen;
+    ctx.lineWidth = radius * 0.22;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.62, -1.05, -0.08);
+    ctx.stroke();
+    ctx.restore();
+
+    const coverRadius = radius * 0.34;
+    if (coverImage) {
+        drawCenterCroppedCircleImage(ctx, coverImage, coverRadius);
+    } else {
+        const labelGradient = ctx.createLinearGradient(-coverRadius, -coverRadius, coverRadius, coverRadius);
+        labelGradient.addColorStop(0, preset.theme.vinylLabel || 'rgba(255, 242, 223, 0.18)');
+        labelGradient.addColorStop(1, preset.theme.halo);
+        ctx.fillStyle = labelGradient;
+        ctx.beginPath();
+        ctx.arc(0, 0, coverRadius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    ctx.strokeStyle = preset.theme.avatarBorder;
+    ctx.lineWidth = Math.max(3, radius * 0.025);
+    ctx.beginPath();
+    ctx.arc(0, 0, coverRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(12, 10, 10, 0.9)';
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = preset.theme.accent;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.03, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    return {
+        x: centerX - radius,
+        y: centerY + yOffset - radius,
+        size,
+        centerX,
+        centerY: centerY + yOffset,
+    };
 };
 
 const drawCinematicPlate = (ctx, width, height, preset) => {
@@ -459,6 +624,53 @@ const drawCosmicScene = (ctx, width, height, preset, frameState, renderState, av
     ctx.restore();
 };
 
+const drawVinylScene = (ctx, width, height, preset, frameState, renderState, avatarRect) => {
+    if (!avatarRect) return;
+
+    drawRadialBars(ctx, {
+        centerX: avatarRect.centerX,
+        centerY: avatarRect.centerY,
+        size: avatarRect.size * 1.34,
+    }, preset, frameState);
+
+    ctx.save();
+    ctx.globalAlpha = 0.82;
+    ctx.translate(width * 0.12, height * 0.81);
+    drawStereoBars(
+        ctx,
+        frameState.leftData,
+        frameState.rightData,
+        renderState.barsStateLeft,
+        renderState.barsStateRight,
+        width * 0.76,
+        height * 0.055,
+        {
+            leftBarColorStart: preset.theme.leftBarColorStart,
+            leftBarColorEnd: preset.theme.leftBarColorEnd,
+            rightBarColorStart: preset.theme.rightBarColorStart,
+            rightBarColorEnd: preset.theme.rightBarColorEnd,
+            gravity: 1.4,
+            gap: 4,
+        }
+    );
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 244, 228, 0.28)';
+    ctx.lineWidth = Math.max(3, width * 0.004);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(width * 0.72, height * 0.28);
+    ctx.lineTo(width * 0.84, height * 0.4);
+    ctx.lineTo(width * 0.66, height * 0.53);
+    ctx.stroke();
+    ctx.fillStyle = preset.theme.rightBarColorEnd;
+    ctx.beginPath();
+    ctx.arc(width * 0.665, height * 0.53, width * 0.012, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+};
+
 const drawSceneDetails = (ctx, width, height, preset, frameState, renderState, avatarRect) => {
     if (preset.style === 'cinematic') {
         drawCinematicPlate(ctx, width, height, preset);
@@ -468,6 +680,11 @@ const drawSceneDetails = (ctx, width, height, preset, frameState, renderState, a
 
     if (preset.style === 'cosmic') {
         drawCosmicScene(ctx, width, height, preset, frameState, renderState, avatarRect);
+        return;
+    }
+
+    if (preset.style === 'vinyl') {
+        drawVinylScene(ctx, width, height, preset, frameState, renderState, avatarRect);
         return;
     }
 
@@ -511,8 +728,10 @@ export const renderSceneFrame = ({
     renderState,
 }) => {
     ctx.clearRect(0, 0, width, height);
-    drawBackdrop(ctx, width, height, assets.backgroundImage, preset, frameState);
-    const avatarRect = drawAvatar(ctx, width, height, assets.avatarImage, preset, frameState, renderState);
+    drawBackdrop(ctx, width, height, assets.backgroundImage, preset, frameState, assets);
+    const avatarRect = preset.style === 'vinyl'
+        ? drawVinylRecord(ctx, width, height, preset, frameState, renderState, assets.avatarImage)
+        : drawAvatar(ctx, width, height, assets.avatarImage, preset, frameState, renderState);
     drawSceneDetails(ctx, width, height, preset, frameState, renderState, avatarRect);
 
     if (frameState.lyrics?.length) {

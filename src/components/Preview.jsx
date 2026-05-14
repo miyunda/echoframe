@@ -6,6 +6,7 @@ import { fetchFile, toBlobURL } from '@ffmpeg/util';
 import { extractFrequencyData } from '../utils/offlineProcessor';
 import { buildFrameState, createSceneRenderState, renderSceneFrame } from '../utils/sceneRenderer';
 import { getScenePreset } from '../utils/scenePresets';
+import { createBackgroundTrack, resolveBackgroundFrame } from '../utils/backgroundTrack';
 
 const EXPORT_STAGES = {
     IDLE: 'idle',
@@ -87,6 +88,12 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
             const bgImage = background?.type === 'image' && background.file
                 ? await createImageBitmap(background.file)
                 : null;
+            const backgroundTrack = background?.type === 'track'
+                ? createBackgroundTrack(background.items, totalFrames / FPS, background.transition)
+                : null;
+            const backgroundImages = background?.type === 'track'
+                ? await Promise.all(background.items.map((item) => createImageBitmap(item.file)))
+                : [];
             const preset = getScenePreset(scenePresetId);
             // Load Avatar Bitmap if exists
             let avatarImage = null;
@@ -118,6 +125,9 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                     frameState,
                     assets: {
                         backgroundImage: bgImage,
+                        backgroundTrack,
+                        backgroundImages,
+                        backgroundFrame: backgroundTrack ? resolveBackgroundFrame(backgroundTrack, virtualTime) : null,
                         avatarImage,
                         audioName: audio.name,
                     },

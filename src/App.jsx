@@ -9,6 +9,18 @@ import { assertSupportedImageFile, createAssetRecord, createGeneratedBackgroundA
 import { createBackgroundTrack, DEFAULT_TRANSITION_DURATION, MOTION_PRESETS, MOTION_PRESET_LABELS, TRANSITION_STYLES, TRANSITION_STYLE_LABELS } from './utils/backgroundTrack';
 import { parseSubtitleByFilename } from './utils/subtitleParser';
 
+const LYRIC_LAYOUT_MODES = [
+    { id: 'preset', label: '跟随场景' },
+    { id: 'bilingual-stacked', label: '双语堆叠' },
+    { id: 'single-line', label: '仅主字幕' },
+    { id: 'minimal-subtitle', label: '极简字幕' },
+];
+
+const AVATAR_MODES = [
+    { id: 'preset', label: '跟随场景' },
+    { id: 'hidden', label: '隐藏头像' },
+];
+
 export default function App() {
     const generatedBackgroundRef = useRef(createGeneratedBackgroundAsset());
     const [backgroundTrackItems, setBackgroundTrackItems] = useState([]);
@@ -18,6 +30,8 @@ export default function App() {
     const [lyricsAssetName, setLyricsAssetName] = useState(null);
     const [audioDuration, setAudioDuration] = useState(0);
     const [scenePresetId, setScenePresetId] = useState(DEFAULT_SCENE_PRESET_ID);
+    const [lyricLayoutMode, setLyricLayoutMode] = useState('preset');
+    const [avatarMode, setAvatarMode] = useState('preset');
     const [transitionStyle, setTransitionStyle] = useState('crossfade');
     const [transitionDuration, setTransitionDuration] = useState(DEFAULT_TRANSITION_DURATION);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -208,6 +222,8 @@ export default function App() {
         setAudioDuration(0);
         setTransitionStyle('crossfade');
         setTransitionDuration(DEFAULT_TRANSITION_DURATION);
+        setLyricLayoutMode('preset');
+        setAvatarMode('preset');
         setIsPlaying(false);
         setShowPreview(false);
     };
@@ -527,6 +543,64 @@ export default function App() {
                         </div>
 
                         <section className="w-full mt-6 space-y-4">
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div className="rounded-3xl border border-overlay bg-surface/80 p-5 shadow-sm">
+                                    <div>
+                                        <h2 className="text-text text-lg font-black tracking-tight">歌词布局</h2>
+                                        <p className="text-subtle text-xs font-mono uppercase tracking-[0.2em]">
+                                            Current parser supports LRC, SRT, and VTT
+                                        </p>
+                                    </div>
+                                    <div className="mt-4 flex flex-wrap gap-2">
+                                        {LYRIC_LAYOUT_MODES.map((mode) => {
+                                            const isSelected = mode.id === lyricLayoutMode;
+                                            return (
+                                                <button
+                                                    key={mode.id}
+                                                    type="button"
+                                                    onClick={() => setLyricLayoutMode(mode.id)}
+                                                    className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                                                        isSelected
+                                                            ? 'border-text bg-text text-base'
+                                                            : 'border-overlay bg-white text-text hover:border-muted'
+                                                    }`}
+                                                >
+                                                    {mode.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div className="rounded-3xl border border-overlay bg-surface/80 p-5 shadow-sm">
+                                    <div>
+                                        <h2 className="text-text text-lg font-black tracking-tight">头像显示</h2>
+                                        <p className="text-subtle text-xs font-mono uppercase tracking-[0.2em]">
+                                            Override avatar rendering without changing the scene preset
+                                        </p>
+                                    </div>
+                                    <div className="mt-4 flex flex-wrap gap-2">
+                                        {AVATAR_MODES.map((mode) => {
+                                            const isSelected = mode.id === avatarMode;
+                                            return (
+                                                <button
+                                                    key={mode.id}
+                                                    type="button"
+                                                    onClick={() => setAvatarMode(mode.id)}
+                                                    className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                                                        isSelected
+                                                            ? 'border-text bg-text text-base'
+                                                            : 'border-overlay bg-white text-text hover:border-muted'
+                                                    }`}
+                                                >
+                                                    {mode.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="flex items-center justify-between gap-4">
                                 <div>
                                     <h2 className="text-text text-lg font-black tracking-tight">选择视觉场景</h2>
@@ -598,6 +672,8 @@ export default function App() {
                         onClear={clearFiles}
                         lyrics={lyrics}
                         scenePresetId={scenePresetId}
+                        lyricLayoutMode={lyricLayoutMode}
+                        avatarMode={avatarMode}
                     />
                 )}
 

@@ -3,7 +3,7 @@ import { buildFrameState, createSceneRenderState, renderSceneFrame } from '../ut
 import { getScenePreset } from '../utils/scenePresets';
 import { createBackgroundTrack, resolveBackgroundFrame } from '../utils/backgroundTrack';
 
-const Visualizer = forwardRef(({ audioRef, isPlaying, lyrics, avatar, background, audioName, scenePresetId }, ref) => {
+const Visualizer = forwardRef(({ audioRef, isPlaying, lyrics, avatar, background, audioName, scenePresetId, lyricLayoutMode, avatarMode }, ref) => {
     const canvasRef = useRef(null);
     const audioCtxRef = useRef(null);
     const leftAnalyserRef = useRef(null);
@@ -170,6 +170,8 @@ const Visualizer = forwardRef(({ audioRef, isPlaying, lyrics, avatar, background
             leftData,
             rightData,
             lyrics,
+            lyricLayoutMode,
+            avatarMode,
         });
 
         renderSceneFrame({
@@ -255,7 +257,7 @@ const Visualizer = forwardRef(({ audioRef, isPlaying, lyrics, avatar, background
         if (!isPlaying) {
             drawStillFrame();
         }
-    }, [isPlaying, lyrics, audioName, scenePresetId]);
+    }, [isPlaying, lyrics, audioName, scenePresetId, lyricLayoutMode, avatarMode]);
 
     return (
         <canvas

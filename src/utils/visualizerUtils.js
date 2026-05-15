@@ -238,27 +238,32 @@ export const drawLyrics = (ctx, lyrics, currentTime, width, height, options = {}
 
 
     // Position & Style
+    const layoutMode = options.layoutMode || 'preset';
+    const effectiveLayoutMode = layoutMode === 'preset' ? 'bilingual-stacked' : layoutMode;
+    const isSingleLine = effectiveLayoutMode === 'single-line';
+    const isMinimalSubtitle = effectiveLayoutMode === 'minimal-subtitle';
+
     const fontSize = Math.max(24, options.fontSize || width / 25); // Slightly larger min size
     const x = width / 2;
-    const anchorY = options.anchorY ?? 0.92;
+    const anchorY = isMinimalSubtitle ? (options.anchorY ?? 0.92) + 0.015 : (options.anchorY ?? 0.92);
     const y = height * anchorY + yOffset; // 92% adjusted position
-    const maxWidth = width * (options.maxWidthRatio || 0.95); // Max width 95% of canvas
-    const lineHeight = fontSize * 1.3;
+    const maxWidth = width * (options.maxWidthRatio || (isMinimalSubtitle ? 0.82 : 0.95)); // Max width 95% of canvas
+    const lineHeight = fontSize * (isMinimalSubtitle ? 1.18 : 1.3);
 
-    ctx.font = `bold ${fontSize}px "Inter", sans-serif`;
+    ctx.font = `${isMinimalSubtitle ? '600' : 'bold'} ${isMinimalSubtitle ? fontSize * 0.88 : fontSize}px "Inter", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
     // Shadow
     ctx.shadowColor = options.shadowColor || 'rgba(0, 0, 0, 0.5)';
-    ctx.shadowBlur = options.shadowBlur || 4;
-    ctx.shadowOffsetY = 2;
+    ctx.shadowBlur = options.shadowBlur || (isMinimalSubtitle ? 6 : 4);
+    ctx.shadowOffsetY = isMinimalSubtitle ? 1 : 2;
 
     ctx.globalAlpha = opacity;
 
     // Stroke (Black, 4-6px)
     ctx.lineJoin = 'round';
-    ctx.lineWidth = 6;
+    ctx.lineWidth = isMinimalSubtitle ? 4 : 6;
     ctx.strokeStyle = options.strokeColor || '#000000';
     ctx.fillStyle = options.mainColor || '#ffffff';
 
@@ -267,11 +272,11 @@ export const drawLyrics = (ctx, lyrics, currentTime, width, height, options = {}
 
     // Word Wrap Logic for Translation
     let translationLines = [];
-    if (currentLyric.translation) {
-        ctx.font = `medium ${fontSize * 0.75}px "Inter", sans-serif`; // Smaller font for translation
+    if (!isSingleLine && !isMinimalSubtitle && currentLyric.translation) {
+        ctx.font = `500 ${fontSize * 0.75}px "Inter", sans-serif`; // Smaller font for translation
         translationLines = getLines(ctx, currentLyric.translation, maxWidth);
         // Reset font for main text drawing
-        ctx.font = `bold ${fontSize}px "Inter", sans-serif`;
+        ctx.font = `${isMinimalSubtitle ? '600' : 'bold'} ${isMinimalSubtitle ? fontSize * 0.88 : fontSize}px "Inter", sans-serif`;
     }
 
     // Calculate total height to center the block or position from bottom
@@ -304,9 +309,9 @@ export const drawLyrics = (ctx, lyrics, currentTime, width, height, options = {}
     }
 
     // Draw Main Text (Above Translation)
-    ctx.font = `bold ${fontSize}px "Inter", sans-serif`;
+    ctx.font = `${isMinimalSubtitle ? '600' : 'bold'} ${isMinimalSubtitle ? fontSize * 0.88 : fontSize}px "Inter", sans-serif`;
     ctx.fillStyle = options.mainColor || '#ffffff';
-    ctx.lineWidth = 6;
+    ctx.lineWidth = isMinimalSubtitle ? 4 : 6;
     ctx.strokeStyle = options.strokeColor || '#000000';
 
     lines.reverse().forEach((line) => {

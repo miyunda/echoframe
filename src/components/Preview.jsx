@@ -17,7 +17,7 @@ const EXPORT_STAGES = {
     READY: 'ready'
 };
 
-export default function Preview({ background, audio, audioRef, isPlaying, setIsPlaying, onClear, lyrics, avatar, scenePresetId }) {
+export default function Preview({ background, audio, audioRef, isPlaying, setIsPlaying, onClear, lyrics, avatar, scenePresetId, lyricLayoutMode, avatarMode }) {
     const [exportStage, setExportStage] = useState(EXPORT_STAGES.IDLE);
     const [exportProgress, setExportProgress] = useState(0);
     const [downloadUrl, setDownloadUrl] = useState(null);
@@ -115,6 +115,8 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                     leftData,
                     rightData,
                     lyrics,
+                    lyricLayoutMode,
+                    avatarMode,
                 });
 
                 renderSceneFrame({
@@ -230,6 +232,8 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                         background={background}
                         audioName={audio.name}
                         scenePresetId={scenePresetId}
+                        lyricLayoutMode={lyricLayoutMode}
+                        avatarMode={avatarMode}
                     />
                 </div>
 

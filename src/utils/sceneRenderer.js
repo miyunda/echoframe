@@ -18,7 +18,7 @@ export const createSceneRenderState = (bufferLength = 256) => ({
     recordRotation: 0,
 });
 
-export const buildFrameState = ({ time, duration, leftData, rightData, lyrics }) => {
+export const buildFrameState = ({ time, duration, leftData, rightData, lyrics, lyricLayoutMode = 'preset', avatarMode = 'preset' }) => {
     const safeLeftData = leftData || new Uint8Array(256);
     const safeRightData = rightData || new Uint8Array(256);
     const bassAverage = Math.max(averageBins(safeLeftData, 6), averageBins(safeRightData, 6));
@@ -29,6 +29,8 @@ export const buildFrameState = ({ time, duration, leftData, rightData, lyrics })
         time,
         duration,
         lyrics,
+        lyricLayoutMode,
+        avatarMode,
         leftData: safeLeftData,
         rightData: safeRightData,
         bassEnergy: clamp(bassAverage / 255, 0, 1),
@@ -684,6 +686,10 @@ const drawSceneDetails = (ctx, width, height, preset, frameState, renderState, a
     }
 
     if (preset.style === 'vinyl') {
+        if (!avatarRect) {
+            drawStereoScene(ctx, width, height, preset, frameState, renderState);
+            return;
+        }
         drawVinylScene(ctx, width, height, preset, frameState, renderState, avatarRect);
         return;
     }
@@ -729,13 +735,18 @@ export const renderSceneFrame = ({
 }) => {
     ctx.clearRect(0, 0, width, height);
     drawBackdrop(ctx, width, height, assets.backgroundImage, preset, frameState, assets);
-    const avatarRect = preset.style === 'vinyl'
-        ? drawVinylRecord(ctx, width, height, preset, frameState, renderState, assets.avatarImage)
-        : drawAvatar(ctx, width, height, assets.avatarImage, preset, frameState, renderState);
+    const avatarRect = frameState.avatarMode === 'hidden'
+        ? null
+        : (
+            preset.style === 'vinyl'
+                ? drawVinylRecord(ctx, width, height, preset, frameState, renderState, assets.avatarImage)
+                : drawAvatar(ctx, width, height, assets.avatarImage, preset, frameState, renderState)
+        );
     drawSceneDetails(ctx, width, height, preset, frameState, renderState, avatarRect);
 
     if (frameState.lyrics?.length) {
         drawLyrics(ctx, frameState.lyrics, frameState.time, width, height, {
+            layoutMode: frameState.lyricLayoutMode,
             anchorY: preset.layout.lyricY,
             mainColor: preset.theme.accent,
             translationColor: preset.theme.subtitle,

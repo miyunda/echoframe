@@ -12,7 +12,7 @@
 
 ## First Implementation Slice
 
-The first slice should target:
+The first slice targets:
 
 - `1080p30`
 - AVC/H.264 through `VideoEncoder`
@@ -22,6 +22,17 @@ The first slice should target:
 - FFmpeg.wasm fallback when WebCodecs is unavailable
 
 This keeps the optimized path small enough to review while attacking the main bottleneck: the JPEG image-sequence handoff into FFmpeg.wasm.
+
+Implemented in this slice:
+
+- Added explicit export profiles for `720p30`, `1080p30`, `1080p60`, and future `4K30`.
+- Defaulted the UI to `1080p30`.
+- Added a WebCodecs capability check for `1080p30`.
+- Added a WebCodecs export module that renders through `renderSceneFrame()` and muxes encoded AVC/AAC chunks into MP4.
+- Changed offline audio analysis to accept the selected profile fps.
+- Updated the FFmpeg.wasm fallback path to use the selected profile dimensions, fps, and bitrate.
+- Kept `1080p60` selectable through the fallback path so it remains part of the workflow while WebCodecs 60fps validation is still pending.
+- Disabled `4K30` in the UI until memory behavior is proven.
 
 ## 1080p60 Handling
 
@@ -50,7 +61,7 @@ When WebCodecs 1080p30 is stable, 1080p60 should be enabled by adjusting profile
   Accepts target fps instead of assuming 60fps for all exports.
 
 - `src/utils/export.worker.js`
-  Either replace with the new shared-renderer export worker or remove after the new module supersedes it.
+  Left unchanged in this slice. It remains a legacy prototype and is not promoted because it does not use the shared scene renderer.
 
 ## Important Integration Detail
 

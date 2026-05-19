@@ -51,6 +51,13 @@ Record:
 
 Automated visual equivalence tests are not yet available. Until they exist, manual preview/export comparison remains required for this phase.
 
+## Verification Notes
+
+- `npm run build` passes.
+- The local workbench opens with the debug seed.
+- The profile selector shows `720p30`, `1080p30`, `1080p60`, and disabled `4K30`.
+- The Codex in-app browser used for this check does not expose WebCodecs or OffscreenCanvas, so it can verify UI and fallback guards but not real WebCodecs encoding performance.
+
 ## Known Risks
 
 - Browser codec support can vary by version and platform.

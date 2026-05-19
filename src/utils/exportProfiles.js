@@ -40,7 +40,7 @@ export const EXPORT_PROFILES = [
         videoBitrate: 14_000_000,
         audioBitrate: 192_000,
         codec: 'avc1.64002a',
-        webCodecs: false,
+        webCodecs: true,
     },
     {
         id: EXPORT_PROFILE_IDS.UHD_4K_30,

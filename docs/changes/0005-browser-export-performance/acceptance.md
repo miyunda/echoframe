@@ -57,6 +57,16 @@ Automated visual equivalence tests are not yet available. Until they exist, manu
 - The local workbench opens with the debug seed.
 - The profile selector shows `720p30`, `1080p30`, `1080p60`, and disabled `4K30`.
 - The Codex in-app browser used for this check does not expose WebCodecs or OffscreenCanvas, so it can verify UI and fallback guards but not real WebCodecs encoding performance.
+- Local browser validation succeeded for a representative long export: about 3 minutes of source video at `1080p30` completed in about 4 minutes through the new browser export path.
+- That runtime was observed manually and not precisely timed, so it should be treated as an approximate baseline rather than a benchmark-grade measurement.
+- Local fallback validation for `1080p60` was captured under these conditions:
+  Mac mini M4 (2024), 32 GB RAM, 2 TB storage, macOS 26.4.1, Arc 1.145.0 with Chromium 147.0.7727.138, room temperature about 27 C, no air conditioning.
+- In that `1080p60` run, a 185 second source video completed in about 700 seconds through the current compatibility path.
+- During the frame-writing stage, Activity Monitor showed the `Browser Helper` process around 45 percent to 46 percent CPU and 75 percent to 77 percent GPU, with only slight fan noise.
+- During that same frame-writing stage, observed memory usage stayed around 1.5 GB to 1.7 GB.
+- During the audio/video merge stage, Activity Monitor showed `Browser Helper Renderer` around 350 percent CPU with no obvious GPU use, and fan noise increased noticeably but remained acceptable.
+- Those CPU and GPU figures were observed manually in Activity Monitor and should be treated as approximate operational notes rather than sampled telemetry.
+- As an external reference point, Jianying/Bijian generated `1080p60` HEVC at about 1.2x real time on the same machine, but bitrate and codec settings were not normalized, so the comparison is directional only.
 
 ## Known Risks
 

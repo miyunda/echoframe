@@ -28,17 +28,18 @@ Implemented in this slice:
 - Added explicit export profiles for `720p30`, `1080p30`, `1080p60`, and future `4K30`.
 - Defaulted the UI to `1080p30`.
 - Added a WebCodecs capability check for `1080p30`.
+- Extended the same capability-detected WebCodecs path to `1080p60`, with automatic fallback when the browser or codec configuration does not support it.
 - Added a WebCodecs export module that renders through `renderSceneFrame()` and muxes encoded AVC/AAC chunks into MP4.
 - Changed offline audio analysis to accept the selected profile fps.
 - Updated the FFmpeg.wasm fallback path to use the selected profile dimensions, fps, and bitrate.
-- Kept `1080p60` selectable through the fallback path so it remains part of the workflow while WebCodecs 60fps validation is still pending.
+- Kept `1080p60` selectable even when runtime capability detection routes it back to the compatibility path.
 - Disabled `4K30` in the UI until memory behavior is proven.
 
 ## 1080p60 Handling
 
 1080p60 must stay in the profile model from the beginning. The first slice may leave it on the fallback path or mark it experimental, but the implementation should avoid hard-coded `30fps` assumptions in renderer timing, progress math, file naming, or profile UI.
 
-When WebCodecs 1080p30 is stable, 1080p60 should be enabled by adjusting profile selection and validating:
+Now that 1080p60 is wired into the same capability-detected path, the next validation step is to confirm:
 
 - queue backpressure behavior
 - bitrate

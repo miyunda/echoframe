@@ -66,6 +66,9 @@ Automated visual equivalence tests are not yet available. Until they exist, manu
 - During that same frame-writing stage, observed memory usage stayed around 1.5 GB to 1.7 GB.
 - During the audio/video merge stage, Activity Monitor showed `Browser Helper Renderer` around 350 percent CPU with no obvious GPU use, and fan noise increased noticeably but remained acceptable.
 - Those CPU and GPU figures were observed manually in Activity Monitor and should be treated as approximate operational notes rather than sampled telemetry.
+- After enabling the `1080p60` WebCodecs attempt path, the same source material completed in about 477 seconds.
+- In that later `1080p60` run, Activity Monitor showed about 50.7 percent to 51.5 percent CPU and 85.2 percent to 87.9 percent GPU during export, while fan noise remained barely audible in a quiet room.
+- Browser idle overhead on the same setup was observed at about 30 percent CPU and 4.1 percent GPU, so the export-path measurements should be interpreted against that baseline rather than as pure incremental load.
 - As an external reference point, Jianying/Bijian generated `1080p60` HEVC at about 1.2x real time on the same machine, but bitrate and codec settings were not normalized, so the comparison is directional only.
 
 ## Known Risks

@@ -274,7 +274,7 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
 
     return (
         <div className="w-full flex flex-col gap-6">
-            <div className="w-full relative aspect-video sm:aspect-[21/9] rounded-2xl overflow-hidden glass group animate-in fade-in zoom-in duration-500 shadow-2xl shadow-black/50">
+            <div className="w-full relative aspect-video sm:aspect-[21/9] rounded-2xl overflow-hidden glass group animate-in fade-in zoom-in duration-500 shadow-[0_28px_80px_rgba(87,82,121,0.24)]">
                 <div className="absolute inset-0">
                     <Visualizer
                         audioRef={audioRef}
@@ -288,10 +288,10 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                 </div>
 
                 {exportStage === EXPORT_STAGES.IDLE && (
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-text/14">
                         <button
                             onClick={() => setIsPlaying(!isPlaying)}
-                            className="p-6 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all transform hover:scale-110 active:scale-95 border border-white/20"
+                            className="p-6 rounded-full border border-white/40 bg-surface/35 backdrop-blur-md transition-all transform hover:scale-110 hover:bg-surface/55 active:scale-95"
                         >
                             {isPlaying ? <Pause className="text-text fill-text" /> : <Play className="text-text fill-text ml-1" />}
                         </button>
@@ -332,9 +332,9 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                     <div className="absolute inset-0 bg-base/95 backdrop-blur-3xl flex items-center justify-center z-50 animate-in zoom-in fade-in duration-700">
                         <div className="flex flex-col items-center gap-10 text-center px-10">
                             <div className="relative">
-                                <div className="absolute inset-0 bg-green-500/20 blur-[80px] rounded-full animate-pulse" />
-                                <div className="relative w-28 h-28 bg-green-500 rounded-full flex items-center justify-center shadow-[0_0_60px_rgba(34,197,94,0.4)]">
-                                    <CheckCircle2 className="w-14 h-14 text-black" />
+                                <div className="absolute inset-0 bg-foam/20 blur-[80px] rounded-full animate-pulse" />
+                                <div className="relative w-28 h-28 rounded-full bg-pine flex items-center justify-center shadow-[0_0_60px_rgba(40,105,131,0.34)]">
+                                    <CheckCircle2 className="w-14 h-14 text-surface" />
                                 </div>
                             </div>
                             <div className="space-y-4">
@@ -345,7 +345,7 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                             </div>
                             <button
                                 onClick={handleDownload}
-                                className="group flex items-center gap-5 px-16 py-8 rounded-full bg-white text-black font-black text-2xl hover:bg-green-500 hover:text-black hover:scale-105 active:scale-95 transition-all shadow-[0_30px_90px_rgba(0,0,0,0.6)]"
+                                className="group flex items-center gap-5 px-16 py-8 rounded-full bg-pine text-surface font-black text-2xl hover:scale-105 hover:bg-foam active:scale-95 transition-all shadow-[0_30px_90px_rgba(40,105,131,0.34)]"
                             >
                                 <Download className="w-8 h-8" />
                                 <span>保存 {getExportProfile(selectedExportProfileId).label} MP4</span>
@@ -355,8 +355,8 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                 )}
 
                 <div className="absolute bottom-6 left-6 flex items-center gap-4">
-                    <div className={`w-3 h-3 rounded-full ${isPlaying || isSynthesizing ? 'bg-brand-start animate-pulse' : 'bg-white/10'}`} />
-                    <span className="text-xs font-black font-mono text-white/30 uppercase tracking-[0.3em]">
+                    <div className={`w-3 h-3 rounded-full ${isPlaying || isSynthesizing ? 'bg-brand-start animate-pulse' : 'bg-overlay/80'}`} />
+                    <span className="text-xs font-black font-mono text-subtle/75 uppercase tracking-[0.3em]">
                         {exportStage === EXPORT_STAGES.IDLE ? (isPlaying ? 'Auditing' : 'Lobby') : 'Heavy Truck Core'}
                     </span>
                 </div>
@@ -365,7 +365,7 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                     <button
                         type="button"
                         onClick={onClear}
-                        className="absolute top-5 right-5 z-20 flex items-center gap-2 rounded-full border border-white/15 bg-black/25 px-4 py-2 text-xs font-mono uppercase tracking-[0.25em] text-white/70 transition hover:bg-black/40 hover:text-white"
+                        className="absolute top-5 right-5 z-20 flex items-center gap-2 rounded-full border border-overlay/90 bg-surface/70 px-4 py-2 text-xs font-mono uppercase tracking-[0.25em] text-subtle transition hover:bg-white hover:text-text"
                     >
                         <X className="w-4 h-4" />
                         Reset
@@ -376,7 +376,7 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
             {
                 exportStage === EXPORT_STAGES.IDLE && (
                     <div className="w-full flex flex-col items-center gap-4">
-                        <div className="grid w-full max-w-3xl grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-2 sm:grid-cols-4">
+                        <div className="grid w-full max-w-3xl grid-cols-2 gap-2 rounded-2xl border border-overlay/80 bg-surface/80 p-2 shadow-[0_18px_60px_rgba(87,82,121,0.08)] backdrop-blur sm:grid-cols-4">
                             {EXPORT_PROFILES.map((profile) => {
                                 const isSelected = profile.id === selectedExportProfileId;
                                 const isFuture = profile.id === '4k30';
@@ -386,13 +386,13 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                                         type="button"
                                         disabled={isFuture}
                                         onClick={() => setSelectedExportProfileId(profile.id)}
-                                        className={`rounded-xl px-4 py-3 text-left transition ${isSelected
-                                            ? 'bg-white text-black shadow-lg'
-                                            : 'bg-transparent text-white/65 hover:bg-white/10 hover:text-white'
-                                            } ${isFuture ? 'cursor-not-allowed opacity-45' : ''}`}
+                                        className={`rounded-xl border px-4 py-3 text-left transition ${isSelected
+                                            ? 'border-rose/35 bg-white text-text shadow-[0_12px_32px_rgba(87,82,121,0.14)]'
+                                            : 'border-transparent bg-overlay/70 text-text hover:border-muted/50 hover:bg-white hover:text-text'
+                                            } ${isFuture ? 'cursor-not-allowed border-transparent bg-overlay/35 text-subtle/70 opacity-80' : ''}`}
                                     >
-                                        <span className="block text-sm font-black">{profile.label}</span>
-                                        <span className="block text-[10px] font-mono uppercase tracking-[0.18em] opacity-70">
+                                        <span className={`block text-sm font-black ${isFuture ? 'text-subtle/80' : 'text-text'}`}>{profile.label}</span>
+                                        <span className={`block text-[10px] font-mono uppercase tracking-[0.18em] ${isSelected ? 'text-subtle' : isFuture ? 'text-subtle/65' : 'text-subtle'}`}>
                                             {profile.description}
                                         </span>
                                     </button>
@@ -401,7 +401,7 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                         </div>
                         <button
                             onClick={handleExport}
-                            className="group relative flex items-center gap-6 px-14 py-8 rounded-full font-black overflow-hidden transition-all shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-white text-black hover:scale-105 hover:bg-brand-start hover:text-white"
+                            className="group relative flex items-center gap-6 px-14 py-8 rounded-full font-black overflow-hidden transition-all shadow-[0_20px_50px_rgba(87,82,121,0.22)] bg-white text-text hover:scale-105 hover:bg-brand-start hover:text-surface"
                         >
                             <Zap className="w-7 h-7 fill-current" />
                             <span className="text-2xl">合成视频</span>

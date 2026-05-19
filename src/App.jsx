@@ -333,7 +333,7 @@ export default function App() {
                                                                 className={`rounded-full border px-3 py-1.5 text-xs font-mono uppercase tracking-[0.18em] transition ${
                                                                     isActive
                                                                         ? 'border-text bg-text text-base'
-                                                                        : 'border-overlay bg-white text-subtle hover:border-muted hover:text-text'
+                                                                        : 'border-overlay bg-surface text-subtle hover:border-muted hover:bg-white hover:text-text'
                                                                 }`}
                                                             >
                                                                 {TRANSITION_STYLE_LABELS[style]}
@@ -416,7 +416,7 @@ export default function App() {
                                                             onDragEnd={resetBackgroundDragState}
                                                             onMouseEnter={() => handleTimelineHover(index)}
                                                             onMouseLeave={clearTimelineHover}
-                                                            className={`grid grid-cols-1 gap-3 rounded-2xl border border-overlay/80 bg-white/60 p-3 transition-all sm:grid-cols-[72px_1fr_auto] ${
+                                                            className={`grid grid-cols-1 gap-3 rounded-2xl border border-overlay/80 bg-surface/70 p-3 transition-all sm:grid-cols-[72px_1fr_auto] ${
                                                                 draggedBackgroundIndex === index ? 'scale-[0.98] opacity-70' : ''
                                                             } ${
                                                                 dragOverBackgroundIndex === index && draggedBackgroundIndex !== index
@@ -437,7 +437,7 @@ export default function App() {
                                                                     className="h-full w-full object-cover"
                                                                 />
                                                                 {backgroundTrackItems.length > 1 && (
-                                                                    <div className="absolute left-2 top-2 rounded-full border border-white/50 bg-black/35 p-1 text-white shadow-sm">
+                                                                    <div className="absolute left-2 top-2 rounded-full border border-overlay/90 bg-surface/75 p-1 text-subtle shadow-sm backdrop-blur">
                                                                         <GripVertical className="h-4 w-4" />
                                                                     </div>
                                                                 )}
@@ -464,7 +464,7 @@ export default function App() {
                                                                     <select
                                                                         value={item.motionPreset || MOTION_PRESETS[index % MOTION_PRESETS.length]}
                                                                         onChange={(event) => updateBackgroundItemMotion(index, event.target.value)}
-                                                                        className="mt-1 w-full rounded-xl border border-overlay bg-white px-3 py-2 text-sm font-medium text-text outline-none transition focus:border-muted"
+                                                                        className="mt-1 w-full rounded-xl border border-overlay bg-surface px-3 py-2 text-sm font-medium text-text outline-none transition focus:border-muted"
                                                                         aria-label={`Motion preset for ${item.name}`}
                                                                     >
                                                                         {MOTION_PRESETS.map((preset) => (
@@ -498,7 +498,7 @@ export default function App() {
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => removeBackgroundItem(index)}
-                                                                    className="rounded-full border border-rose/30 bg-white p-2 text-rose transition hover:bg-rose hover:text-white"
+                                                                    className="rounded-full border border-rose/30 bg-surface p-2 text-rose transition hover:bg-rose hover:text-surface"
                                                                     aria-label={`Remove ${item.name}`}
                                                                 >
                                                                     <Trash2 className="h-4 w-4" />
@@ -645,8 +645,8 @@ export default function App() {
                                 className={`
                                     relative px-12 py-4 rounded-full font-bold text-xl transition-all duration-300 shadow-xl
                                     ${audio
-                                        ? 'bg-white text-black hover:scale-105 hover:bg-brand-start hover:text-white cursor-pointer'
-                                        : 'bg-white/5 text-white/20 cursor-not-allowed grayscale'
+                                        ? 'bg-text text-surface hover:scale-105 hover:bg-brand-start hover:text-surface cursor-pointer'
+                                        : 'bg-overlay/40 text-subtle/60 cursor-not-allowed grayscale'
                                     }
                                 `}
                             >

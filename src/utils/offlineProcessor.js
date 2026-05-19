@@ -1,8 +1,8 @@
 /**
- * Extracts frequency data from an audio file offline at 60fps.
+ * Extracts frequency data from an audio file offline at the target export fps.
  * Uses OfflineAudioContext for fast, non-blocking analysis.
  */
-export async function extractFrequencyData(audioBlob, fftSize = 512, onProgress) {
+export async function extractFrequencyData(audioBlob, fftSize = 512, onProgress, options = {}) {
     console.log("Starting high-speed offline audio analysis...");
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     const audioCtx = new AudioContext();
@@ -11,7 +11,7 @@ export async function extractFrequencyData(audioBlob, fftSize = 512, onProgress)
 
     const duration = audioBuffer.duration;
     const sampleRate = audioBuffer.sampleRate;
-    const fps = 60;
+    const fps = options.fps || 60;
     const totalFrames = Math.ceil(duration * fps);
     const frameInterval = 1 / fps;
 

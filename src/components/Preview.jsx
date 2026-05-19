@@ -7,6 +7,8 @@ import { extractFrequencyData } from '../utils/offlineProcessor';
 import { buildFrameState, createSceneRenderState, renderSceneFrame } from '../utils/sceneRenderer';
 import { getScenePreset } from '../utils/scenePresets';
 import { createBackgroundTrack, resolveBackgroundFrame } from '../utils/backgroundTrack';
+import { DEFAULT_EXPORT_PROFILE_ID, EXPORT_PROFILES, getExportProfile } from '../utils/exportProfiles';
+import { canUseWebCodecsExport, exportWithWebCodecs } from '../utils/webcodecsExport';
 
 const EXPORT_STAGES = {
     IDLE: 'idle',
@@ -17,10 +19,36 @@ const EXPORT_STAGES = {
     READY: 'ready'
 };
 
+const createExportCanvas = (width, height) => {
+    if (typeof OffscreenCanvas !== 'undefined') {
+        const canvas = new OffscreenCanvas(width, height);
+        return {
+            canvas,
+            ctx: canvas.getContext('2d'),
+            toBlob: (options) => canvas.convertToBlob(options),
+        };
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    return {
+        canvas,
+        ctx: canvas.getContext('2d'),
+        toBlob: ({ type, quality }) => new Promise((resolve, reject) => {
+            canvas.toBlob((blob) => {
+                if (blob) resolve(blob);
+                else reject(new Error('Canvas frame conversion failed.'));
+            }, type, quality);
+        }),
+    };
+};
+
 export default function Preview({ background, audio, audioRef, isPlaying, setIsPlaying, onClear, lyrics, avatar, scenePresetId, lyricLayoutMode, avatarMode }) {
     const [exportStage, setExportStage] = useState(EXPORT_STAGES.IDLE);
     const [exportProgress, setExportProgress] = useState(0);
     const [downloadUrl, setDownloadUrl] = useState(null);
+    const [selectedExportProfileId, setSelectedExportProfileId] = useState(DEFAULT_EXPORT_PROFILE_ID);
     const ffmpegRef = useRef(new FFmpeg());
 
     useEffect(() => {
@@ -46,12 +74,50 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
         if (exportStage !== EXPORT_STAGES.IDLE || !audio.file) return;
 
         try {
-            console.log("FFmpeg overhaul started");
+            const selectedProfile = getExportProfile(selectedExportProfileId);
+            console.log("Export started", selectedProfile);
             setExportProgress(0);
 
             // 1. Initialize Engine
             setIsPlaying(false); // Stop playback before export
             setExportStage(EXPORT_STAGES.INITIALIZING);
+
+            // 2. Audio Analysis
+            setExportStage(EXPORT_STAGES.ANALYZING);
+            const { leftFrequencyDataSequence, rightFrequencyDataSequence, audioBuffer, duration, totalFrames } = await extractFrequencyData(
+                audio.file,
+                512,
+                (p) => setExportProgress(Math.floor(p * 10)), // 0-10%
+                { fps: selectedProfile.fps }
+            );
+            const preset = getScenePreset(scenePresetId);
+
+            if (await canUseWebCodecsExport(selectedProfile, audioBuffer)) {
+                setExportStage(EXPORT_STAGES.ENCODING);
+                setExportProgress(12);
+
+                const blob = await exportWithWebCodecs({
+                    profile: selectedProfile,
+                    audio,
+                    audioBuffer,
+                    leftFrequencyDataSequence,
+                    rightFrequencyDataSequence,
+                    totalFrames,
+                    background,
+                    lyrics,
+                    avatar,
+                    preset,
+                    lyricLayoutMode,
+                    avatarMode,
+                    onProgress: (progress) => setExportProgress(12 + Math.floor(progress * 83)),
+                });
+
+                setDownloadUrl(URL.createObjectURL(blob));
+                setExportProgress(100);
+                setExportStage(EXPORT_STAGES.READY);
+                return;
+            }
+
             await loadFFmpeg();
             const ffmpeg = ffmpegRef.current;
 
@@ -66,35 +132,25 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                 }
             });
 
-            // 2. Audio Analysis
-            setExportStage(EXPORT_STAGES.ANALYZING);
-            const { leftFrequencyDataSequence, rightFrequencyDataSequence, totalFrames } = await extractFrequencyData(
-                audio.file,
-                512,
-                (p) => setExportProgress(Math.floor(p * 10)) // 0-10%
-            );
-
             // Write audio to ffmpeg FS
             const audioData = await fetchFile(audio.file);
             await ffmpeg.writeFile('audio.mp3', audioData);
 
             // 3. Rendering Phase
             setExportStage(EXPORT_STAGES.RENDERING);
-            const FPS = 60; // Define constant FPS
-            const width = 1920;
-            const height = 1080;
-            const canvas = new OffscreenCanvas(width, height);
-            const ctx = canvas.getContext('2d');
+            const FPS = selectedProfile.fps;
+            const width = selectedProfile.width;
+            const height = selectedProfile.height;
+            const { ctx, toBlob } = createExportCanvas(width, height);
             const bgImage = background?.type === 'image' && background.file
                 ? await createImageBitmap(background.file)
                 : null;
             const backgroundTrack = background?.type === 'track'
-                ? createBackgroundTrack(background.items, totalFrames / FPS, background.transition)
+                ? createBackgroundTrack(background.items, duration, background.transition)
                 : null;
             const backgroundImages = background?.type === 'track'
                 ? await Promise.all(background.items.map((item) => createImageBitmap(item.file)))
                 : [];
-            const preset = getScenePreset(scenePresetId);
             // Load Avatar Bitmap if exists
             let avatarImage = null;
             if (avatar && avatar.file) {
@@ -111,7 +167,7 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                 const rightData = rightFrequencyDataSequence[i] || rightFrequencyDataSequence[rightFrequencyDataSequence.length - 1];
                 const frameState = buildFrameState({
                     time: virtualTime,
-                    duration: totalFrames / FPS,
+                    duration,
                     leftData,
                     rightData,
                     lyrics,
@@ -137,7 +193,7 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                 });
 
                 // Convert to PNG blob and write to memory FS
-                const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.9 });
+                const blob = await toBlob({ type: 'image/jpeg', quality: 0.9 });
                 let frameData = new Uint8Array(await blob.arrayBuffer());
                 const frameName = `frame_${i.toString().padStart(6, '0')}.jpg`;
 
@@ -165,7 +221,7 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                 '-c:v', 'libx264',
                 '-preset', 'ultrafast',
                 '-pix_fmt', 'yuv420p',
-                '-b:v', '8000k',
+                '-b:v', `${Math.round(selectedProfile.videoBitrate / 1000)}k`,
                 // '-an', // No audio
                 'video.mp4'
             ]);
@@ -222,7 +278,7 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
 
     return (
         <div className="w-full flex flex-col gap-6">
-            <div className="w-full relative aspect-video sm:aspect-[21/9] rounded-2xl overflow-hidden glass group animate-in fade-in zoom-in duration-500 shadow-2xl shadow-black/50">
+            <div className="w-full relative aspect-video sm:aspect-[21/9] rounded-2xl overflow-hidden glass group animate-in fade-in zoom-in duration-500 shadow-[0_28px_80px_rgba(87,82,121,0.24)]">
                 <div className="absolute inset-0">
                     <Visualizer
                         audioRef={audioRef}
@@ -238,10 +294,10 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                 </div>
 
                 {exportStage === EXPORT_STAGES.IDLE && (
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-text/14">
                         <button
                             onClick={() => setIsPlaying(!isPlaying)}
-                            className="p-6 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all transform hover:scale-110 active:scale-95 border border-white/20"
+                            className="p-6 rounded-full border border-white/40 bg-surface/35 backdrop-blur-md transition-all transform hover:scale-110 hover:bg-surface/55 active:scale-95"
                         >
                             {isPlaying ? <Pause className="text-text fill-text" /> : <Play className="text-text fill-text ml-1" />}
                         </button>
@@ -282,9 +338,9 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                     <div className="absolute inset-0 bg-base/95 backdrop-blur-3xl flex items-center justify-center z-50 animate-in zoom-in fade-in duration-700">
                         <div className="flex flex-col items-center gap-10 text-center px-10">
                             <div className="relative">
-                                <div className="absolute inset-0 bg-green-500/20 blur-[80px] rounded-full animate-pulse" />
-                                <div className="relative w-28 h-28 bg-green-500 rounded-full flex items-center justify-center shadow-[0_0_60px_rgba(34,197,94,0.4)]">
-                                    <CheckCircle2 className="w-14 h-14 text-black" />
+                                <div className="absolute inset-0 bg-foam/20 blur-[80px] rounded-full animate-pulse" />
+                                <div className="relative w-28 h-28 rounded-full bg-pine flex items-center justify-center shadow-[0_0_60px_rgba(40,105,131,0.34)]">
+                                    <CheckCircle2 className="w-14 h-14 text-surface" />
                                 </div>
                             </div>
                             <div className="space-y-4">
@@ -295,18 +351,18 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                             </div>
                             <button
                                 onClick={handleDownload}
-                                className="group flex items-center gap-5 px-16 py-8 rounded-full bg-white text-black font-black text-2xl hover:bg-green-500 hover:text-black hover:scale-105 active:scale-95 transition-all shadow-[0_30px_90px_rgba(0,0,0,0.6)]"
+                                className="group flex items-center gap-5 px-16 py-8 rounded-full bg-pine text-surface font-black text-2xl hover:scale-105 hover:bg-foam active:scale-95 transition-all shadow-[0_30px_90px_rgba(40,105,131,0.34)]"
                             >
                                 <Download className="w-8 h-8" />
-                                <span>保存 1080p MP4</span>
+                                <span>保存 {getExportProfile(selectedExportProfileId).label} MP4</span>
                             </button>
                         </div>
                     </div>
                 )}
 
                 <div className="absolute bottom-6 left-6 flex items-center gap-4">
-                    <div className={`w-3 h-3 rounded-full ${isPlaying || isSynthesizing ? 'bg-brand-start animate-pulse' : 'bg-white/10'}`} />
-                    <span className="text-xs font-black font-mono text-white/30 uppercase tracking-[0.3em]">
+                    <div className={`w-3 h-3 rounded-full ${isPlaying || isSynthesizing ? 'bg-brand-start animate-pulse' : 'bg-overlay/80'}`} />
+                    <span className="text-xs font-black font-mono text-subtle/75 uppercase tracking-[0.3em]">
                         {exportStage === EXPORT_STAGES.IDLE ? (isPlaying ? 'Auditing' : 'Lobby') : 'Heavy Truck Core'}
                     </span>
                 </div>
@@ -315,7 +371,7 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                     <button
                         type="button"
                         onClick={onClear}
-                        className="absolute top-5 right-5 z-20 flex items-center gap-2 rounded-full border border-white/15 bg-black/25 px-4 py-2 text-xs font-mono uppercase tracking-[0.25em] text-white/70 transition hover:bg-black/40 hover:text-white"
+                        className="absolute top-5 right-5 z-20 flex items-center gap-2 rounded-full border border-overlay/90 bg-surface/70 px-4 py-2 text-xs font-mono uppercase tracking-[0.25em] text-subtle transition hover:bg-white hover:text-text"
                     >
                         <X className="w-4 h-4" />
                         Reset
@@ -326,9 +382,32 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
             {
                 exportStage === EXPORT_STAGES.IDLE && (
                     <div className="w-full flex flex-col items-center gap-4">
+                        <div className="grid w-full max-w-3xl grid-cols-2 gap-2 rounded-2xl border border-overlay/80 bg-surface/80 p-2 shadow-[0_18px_60px_rgba(87,82,121,0.08)] backdrop-blur sm:grid-cols-4">
+                            {EXPORT_PROFILES.map((profile) => {
+                                const isSelected = profile.id === selectedExportProfileId;
+                                const isFuture = profile.id === '4k30';
+                                return (
+                                    <button
+                                        key={profile.id}
+                                        type="button"
+                                        disabled={isFuture}
+                                        onClick={() => setSelectedExportProfileId(profile.id)}
+                                        className={`rounded-xl border px-4 py-3 text-left transition ${isSelected
+                                            ? 'border-rose/35 bg-white text-text shadow-[0_12px_32px_rgba(87,82,121,0.14)]'
+                                            : 'border-transparent bg-overlay/70 text-text hover:border-muted/50 hover:bg-white hover:text-text'
+                                            } ${isFuture ? 'cursor-not-allowed border-transparent bg-overlay/35 text-subtle/70 opacity-80' : ''}`}
+                                    >
+                                        <span className={`block text-sm font-black ${isFuture ? 'text-subtle/80' : 'text-text'}`}>{profile.label}</span>
+                                        <span className={`block text-[10px] font-mono uppercase tracking-[0.18em] ${isSelected ? 'text-subtle' : isFuture ? 'text-subtle/65' : 'text-subtle'}`}>
+                                            {profile.description}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
                         <button
                             onClick={handleExport}
-                            className="group relative flex items-center gap-6 px-14 py-8 rounded-full font-black overflow-hidden transition-all shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-white text-black hover:scale-105 hover:bg-brand-start hover:text-white"
+                            className="group relative flex items-center gap-6 px-14 py-8 rounded-full font-black overflow-hidden transition-all shadow-[0_20px_50px_rgba(87,82,121,0.22)] bg-white text-text hover:scale-105 hover:bg-brand-start hover:text-surface"
                         >
                             <Zap className="w-7 h-7 fill-current" />
                             <span className="text-2xl">合成视频</span>

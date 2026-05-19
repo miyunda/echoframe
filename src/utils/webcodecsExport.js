@@ -119,6 +119,8 @@ export async function exportWithWebCodecs({
     lyrics,
     avatar,
     preset,
+    lyricLayoutMode,
+    avatarMode,
     onProgress,
 }) {
     const target = new MP4Muxer.ArrayBufferTarget();
@@ -173,6 +175,8 @@ export async function exportWithWebCodecs({
                 leftData,
                 rightData,
                 lyrics,
+                lyricLayoutMode,
+                avatarMode,
             });
 
             renderSceneFrame({

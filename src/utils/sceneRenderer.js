@@ -101,10 +101,15 @@ const drawTrackBackgroundImage = (ctx, width, height, image, motionPreset, progr
 };
 
 const drawGeneratedBackdrop = (ctx, width, height, preset, frameState) => {
+    const backdropStops = preset.theme.generatedBackdrop || [
+        'rgba(9, 18, 34, 1)',
+        'rgba(21, 41, 70, 1)',
+        'rgba(109, 63, 34, 1)',
+    ];
     const baseGradient = ctx.createLinearGradient(0, 0, width, height);
-    baseGradient.addColorStop(0, 'rgba(9, 18, 34, 1)');
-    baseGradient.addColorStop(0.45, 'rgba(21, 41, 70, 1)');
-    baseGradient.addColorStop(1, 'rgba(109, 63, 34, 1)');
+    baseGradient.addColorStop(0, backdropStops[0]);
+    baseGradient.addColorStop(0.45, backdropStops[1]);
+    baseGradient.addColorStop(1, backdropStops[2]);
     ctx.fillStyle = baseGradient;
     ctx.fillRect(0, 0, width, height);
 
@@ -116,7 +121,7 @@ const drawGeneratedBackdrop = (ctx, width, height, preset, frameState) => {
         height * 0.34,
         width * (0.48 + frameState.bassEnergy * 0.08)
     );
-    pulseGlow.addColorStop(0, 'rgba(92, 153, 255, 0.42)');
+    pulseGlow.addColorStop(0, preset.theme.pulseGlowStart || 'rgba(92, 153, 255, 0.42)');
     pulseGlow.addColorStop(0.5, preset.theme.halo);
     pulseGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = pulseGlow;
@@ -130,15 +135,15 @@ const drawGeneratedBackdrop = (ctx, width, height, preset, frameState) => {
         height * 0.26,
         width * 0.22
     );
-    warmGlow.addColorStop(0, 'rgba(255, 220, 154, 0.88)');
-    warmGlow.addColorStop(0.35, 'rgba(242, 141, 73, 0.28)');
+    warmGlow.addColorStop(0, preset.theme.warmGlowStart || 'rgba(255, 220, 154, 0.88)');
+    warmGlow.addColorStop(0.35, preset.theme.warmGlowMid || 'rgba(242, 141, 73, 0.28)');
     warmGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = warmGlow;
     ctx.fillRect(0, 0, width, height);
 
     ctx.save();
     ctx.globalAlpha = 0.18 + frameState.midEnergy * 0.12;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.strokeStyle = preset.theme.contourLine || 'rgba(255, 255, 255, 0.08)';
     ctx.lineWidth = 1.5;
     for (let i = 0; i < 4; i += 1) {
         const y = height * (0.62 + i * 0.06);
@@ -274,10 +279,15 @@ const drawVinylRecord = (ctx, width, height, preset, frameState, renderState, co
     ctx.translate(centerX, centerY + yOffset);
     ctx.rotate(renderState.recordRotation);
 
+    const recordStops = preset.theme.vinylRecordStops || [
+        'rgba(70, 55, 46, 1)',
+        'rgba(24, 21, 20, 1)',
+        'rgba(6, 6, 7, 1)',
+    ];
     const vinylGradient = ctx.createRadialGradient(0, 0, radius * 0.16, 0, 0, radius);
-    vinylGradient.addColorStop(0, 'rgba(70, 55, 46, 1)');
-    vinylGradient.addColorStop(0.3, 'rgba(24, 21, 20, 1)');
-    vinylGradient.addColorStop(1, 'rgba(6, 6, 7, 1)');
+    vinylGradient.addColorStop(0, recordStops[0]);
+    vinylGradient.addColorStop(0.3, recordStops[1]);
+    vinylGradient.addColorStop(1, recordStops[2]);
     ctx.fillStyle = vinylGradient;
     ctx.shadowColor = preset.theme.vinylShadow || 'rgba(0, 0, 0, 0.35)';
     ctx.shadowBlur = radius * 0.22;
@@ -331,7 +341,7 @@ const drawVinylRecord = (ctx, width, height, preset, frameState, renderState, co
     ctx.arc(0, 0, coverRadius, 0, Math.PI * 2);
     ctx.stroke();
 
-    ctx.fillStyle = 'rgba(12, 10, 10, 0.9)';
+    ctx.fillStyle = preset.theme.vinylCenter || 'rgba(12, 10, 10, 0.9)';
     ctx.beginPath();
     ctx.arc(0, 0, radius * 0.11, 0, Math.PI * 2);
     ctx.fill();
@@ -357,8 +367,8 @@ const drawCinematicPlate = (ctx, width, height, preset) => {
     const y = height * 0.18;
 
     ctx.save();
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
-    ctx.strokeStyle = 'rgba(255, 235, 210, 0.12)';
+    ctx.fillStyle = preset.theme.plateFill || 'rgba(0, 0, 0, 0.18)';
+    ctx.strokeStyle = preset.theme.plateStroke || 'rgba(255, 235, 210, 0.12)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.roundRect(x, y, plateWidth, plateHeight, 28);
@@ -658,7 +668,7 @@ const drawVinylScene = (ctx, width, height, preset, frameState, renderState, ava
     ctx.restore();
 
     ctx.save();
-    ctx.strokeStyle = 'rgba(255, 244, 228, 0.28)';
+    ctx.strokeStyle = preset.theme.tonearm || 'rgba(255, 244, 228, 0.28)';
     ctx.lineWidth = Math.max(3, width * 0.004);
     ctx.lineCap = 'round';
     ctx.beginPath();

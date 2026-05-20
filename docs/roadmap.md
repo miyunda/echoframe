@@ -266,6 +266,49 @@ Risks and fallback:
 - Risk: schema changes lock the product too early.
 - Fallback: version the schema from the start and keep the first schema focused on current features.
 
+## Phase 7: Style Pack Expansion
+
+Goal: grow the visual preset system into recognizable video style families.
+
+User value:
+
+- Users can pick an MV direction that matches the song mood instead of only choosing layout mechanics.
+- The product can support more expressive publishing scenarios without requiring manual design work.
+- Presets become easier to describe, compare, and extend as coherent style packs.
+
+Technical scope:
+
+- Define style-pack principles that cover color, texture, motion language, typography, lyric treatment, avatar treatment, and generated fallback backgrounds.
+- Keep every style pack on the shared scene renderer path so preview and export remain aligned.
+- Add new style packs incrementally, with one implementation change per pack when possible.
+- Treat background assets and palette extraction as optional enhancers rather than hard dependencies.
+- Avoid coupling style packs to a specific encoder or desktop export path.
+
+Candidate style packs:
+
+- `post-apocalyptic-wasteland`: dusty atmosphere, harsh sunlight, damaged overlays, sparse motion, and distressed lyric treatment.
+- `decayed-industrial`: rusted metal, warning-light accents, mechanical pulses, scan lines, and heavier beat response.
+- `fresh-nature`: soft daylight, foliage shadows, organic particle drift, gentle motion, and clean subtitle-first typography.
+- `cute-playground`: rounded shapes, sticker-like accents, bouncy beat motion, bright but controlled colors, and playful lyric timing.
+
+Required documents:
+
+- `docs/changes/0008-style-pack-roadmap/design.md`
+- `docs/changes/0008-style-pack-roadmap/implementation.md`
+- `docs/changes/0008-style-pack-roadmap/acceptance.md`
+
+Acceptance criteria:
+
+- The candidate style packs have documented visual principles and implementation boundaries.
+- Each future style-pack implementation can be reviewed independently.
+- Preview/export consistency remains a requirement for all style packs.
+- At least one candidate pack has a clear recommended first implementation path.
+
+Risks and fallback:
+
+- Risk: style packs become shallow color swaps rather than meaningfully different scenes.
+- Fallback: require each pack to define at least one motion or composition behavior that is distinct from existing presets.
+
 ## Phase Order
 
 Recommended order:
@@ -277,6 +320,6 @@ Recommended order:
 5. Phase 4: Browser Export Performance
 6. Phase 5: Mac Accelerated Export
 7. Phase 6: Project Model and Template Sharing
+8. Phase 7: Style Pack Expansion
 
 The most important dependency is Phase 1. Better visuals, browser export, and Mac export should all use the same scene contract so the product does not split into incompatible rendering paths.
-

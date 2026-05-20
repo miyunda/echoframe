@@ -16,80 +16,18 @@ const createVideoConfig = (profile) => ({
     avc: { format: 'avc' },
 });
 
-const createAudioConfig = (audioBuffer, profile) => ({
-    codec: 'mp4a.40.2',
-    numberOfChannels: audioBuffer.numberOfChannels,
-    sampleRate: audioBuffer.sampleRate,
-    bitrate: profile.audioBitrate,
-});
-
-export async function canUseWebCodecsExport(profile, audioBuffer) {
+export async function canUseWebCodecsExport(profile) {
     if (!profile?.webCodecs) return false;
     if (typeof VideoEncoder === 'undefined' || typeof VideoFrame === 'undefined') return false;
-    if (typeof AudioEncoder === 'undefined' || typeof AudioData === 'undefined') return false;
     if (typeof OffscreenCanvas === 'undefined') return false;
     if (typeof VideoEncoder.isConfigSupported !== 'function') return false;
-    if (typeof AudioEncoder.isConfigSupported !== 'function') return false;
 
-    let videoSupport;
-    let audioSupport;
     try {
-        [videoSupport, audioSupport] = await Promise.all([
-            VideoEncoder.isConfigSupported(createVideoConfig(profile)),
-            AudioEncoder.isConfigSupported(createAudioConfig(audioBuffer, profile)),
-        ]);
+        const videoSupport = await VideoEncoder.isConfigSupported(createVideoConfig(profile));
+        return Boolean(videoSupport.supported);
     } catch {
         return false;
     }
-
-    return Boolean(videoSupport.supported && audioSupport.supported);
-}
-
-const encodeAudio = async ({ audioBuffer, profile, muxer }) => {
-    let encoderError = null;
-    const encoder = new AudioEncoder({
-        output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
-        error: (error) => {
-            encoderError = error;
-        },
-    });
-
-    encoder.configure(createAudioConfig(audioBuffer, profile));
-
-    const channelData = Array.from({ length: audioBuffer.numberOfChannels }, (_, channel) =>
-        audioBuffer.getChannelData(channel)
-    );
-    const chunkFrames = 2048;
-
-    for (let offset = 0; offset < audioBuffer.length; offset += chunkFrames) {
-        const frameCount = Math.min(chunkFrames, audioBuffer.length - offset);
-        const planarData = new Float32Array(frameCount * audioBuffer.numberOfChannels);
-
-        for (let channel = 0; channel < audioBuffer.numberOfChannels; channel += 1) {
-            planarData.set(channelData[channel].subarray(offset, offset + frameCount), channel * frameCount);
-        }
-
-        const audioData = new AudioData({
-            format: 'f32-planar',
-            sampleRate: audioBuffer.sampleRate,
-            numberOfFrames: frameCount,
-            numberOfChannels: audioBuffer.numberOfChannels,
-            timestamp: Math.round((offset / audioBuffer.sampleRate) * MICROSECONDS_PER_SECOND),
-            data: planarData,
-        });
-
-        encoder.encode(audioData);
-        audioData.close();
-
-        while (encoder.encodeQueueSize > 12) {
-            if (encoderError) throw encoderError;
-            await wait(5);
-        }
-    }
-
-    await encoder.flush();
-    if (encoderError) throw encoderError;
-    encoder.close();
 };
 
 const loadExportAssets = async ({ background, avatar }) => {
@@ -111,7 +49,7 @@ const closeBitmap = (bitmap) => {
 export async function exportWithWebCodecs({
     profile,
     audio,
-    audioBuffer,
+    duration,
     leftFrequencyDataSequence,
     rightFrequencyDataSequence,
     totalFrames,
@@ -132,14 +70,8 @@ export async function exportWithWebCodecs({
             height: profile.height,
             frameRate: profile.fps,
         },
-        audio: {
-            codec: 'aac',
-            numberOfChannels: audioBuffer.numberOfChannels,
-            sampleRate: audioBuffer.sampleRate,
-        },
         fastStart: {
             expectedVideoChunks: totalFrames,
-            expectedAudioChunks: Math.ceil(audioBuffer.length / 2048),
         },
     });
 
@@ -157,13 +89,11 @@ export async function exportWithWebCodecs({
     const ctx = canvas.getContext('2d');
     const { backgroundImage, backgroundImages, avatarImage } = await loadExportAssets({ background, avatar });
     const backgroundTrack = background?.type === 'track'
-        ? createBackgroundTrack(background.items, audioBuffer.duration, background.transition)
+        ? createBackgroundTrack(background.items, duration, background.transition)
         : null;
     const renderState = createSceneRenderState(leftFrequencyDataSequence[0]?.length || 256);
 
     try {
-        await encodeAudio({ audioBuffer, profile, muxer });
-
         for (let index = 0; index < totalFrames; index += 1) {
             const time = index / profile.fps;
             const leftData = leftFrequencyDataSequence[index] || leftFrequencyDataSequence[leftFrequencyDataSequence.length - 1];
@@ -171,7 +101,7 @@ export async function exportWithWebCodecs({
 
             const frameState = buildFrameState({
                 time,
-                duration: audioBuffer.duration,
+                duration,
                 leftData,
                 rightData,
                 lyrics,

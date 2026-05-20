@@ -596,6 +596,298 @@ const drawNatureScene = (ctx, width, height, preset, frameState, renderState) =>
     ctx.restore();
 };
 
+const drawDustField = (ctx, width, height, preset, frameState) => {
+    const count = Math.round(58 + frameState.energy * 24);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+
+    for (let i = 0; i < count; i += 1) {
+        const seedA = hashUnit(i + 141.7);
+        const seedB = hashUnit(i + 191.3);
+        const seedC = hashUnit(i + 229.4);
+        const drift = (frameState.time * (0.014 + seedC * 0.03) + seedA) % 1;
+        const gust = Math.sin(frameState.time * (0.36 + seedB * 0.22) + i) * width * 0.022;
+        const x = seedB * width + gust;
+        const y = (drift * 1.14 - 0.06) * height;
+        const radius = 1 + seedC * 3.8 + frameState.bassEnergy * 2.6;
+
+        ctx.globalAlpha = 0.12 + seedA * 0.18 + frameState.energy * 0.16;
+        ctx.fillStyle = seedA > 0.58
+            ? preset.theme.particlePrimary || 'rgba(255, 255, 255, 0.6)'
+            : preset.theme.particleSecondary || preset.theme.halo;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    ctx.restore();
+};
+
+const drawWastelandHaze = (ctx, width, height, preset, frameState) => {
+    const sun = ctx.createRadialGradient(
+        width * 0.78,
+        height * 0.22,
+        width * 0.04,
+        width * 0.78,
+        height * 0.22,
+        width * 0.26
+    );
+    sun.addColorStop(0, preset.theme.warmGlowStart || 'rgba(255, 221, 168, 0.54)');
+    sun.addColorStop(0.45, preset.theme.warmGlowMid || 'rgba(214, 115, 59, 0.22)');
+    sun.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.fillStyle = sun;
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 0.22 + frameState.midEnergy * 0.1;
+    ctx.strokeStyle = preset.theme.dustShadow || 'rgba(73, 38, 19, 0.18)';
+    ctx.lineWidth = Math.max(1.5, width * 0.002);
+    for (let i = 0; i < 6; i += 1) {
+        const y = height * (0.56 + i * 0.05);
+        ctx.beginPath();
+        ctx.moveTo(width * 0.04, y);
+        ctx.bezierCurveTo(
+            width * 0.22,
+            y - height * 0.04 + Math.sin(frameState.time * 0.42 + i) * 8,
+            width * 0.6,
+            y + height * 0.03 + Math.cos(frameState.time * 0.33 + i) * 10,
+            width * 0.96,
+            y - height * 0.012
+        );
+        ctx.stroke();
+    }
+    ctx.restore();
+};
+
+const drawWastelandScene = (ctx, width, height, preset, frameState, renderState) => {
+    drawWastelandHaze(ctx, width, height, preset, frameState);
+    drawDustField(ctx, width, height, preset, frameState);
+    drawLightSweep(ctx, width, height, preset, frameState);
+
+    ctx.save();
+    ctx.globalAlpha = 0.44 + frameState.energy * 0.18;
+    ctx.translate(width * 0.2, height * 0.85);
+    drawStereoBars(
+        ctx,
+        frameState.leftData,
+        frameState.rightData,
+        renderState.barsStateLeft,
+        renderState.barsStateRight,
+        width * 0.58,
+        height * 0.042,
+        {
+            leftBarColorStart: preset.theme.leftBarColorStart,
+            leftBarColorEnd: preset.theme.leftBarColorEnd,
+            rightBarColorStart: preset.theme.rightBarColorStart,
+            rightBarColorEnd: preset.theme.rightBarColorEnd,
+            gravity: 0.9,
+            gap: 6,
+        }
+    );
+    ctx.restore();
+};
+
+const drawIndustrialGrid = (ctx, width, height, preset, frameState) => {
+    ctx.save();
+    ctx.globalAlpha = 0.18 + frameState.midEnergy * 0.12;
+    ctx.strokeStyle = preset.theme.steelLine || 'rgba(210, 212, 202, 0.12)';
+    ctx.lineWidth = 1;
+
+    for (let i = 0; i < 18; i += 1) {
+        const y = height * 0.12 + i * height * 0.045;
+        ctx.beginPath();
+        ctx.moveTo(width * 0.06, y);
+        ctx.lineTo(width * 0.94, y);
+        ctx.stroke();
+    }
+
+    for (let i = 0; i < 11; i += 1) {
+        const x = width * 0.08 + i * width * 0.08;
+        ctx.beginPath();
+        ctx.moveTo(x, height * 0.12);
+        ctx.lineTo(x, height * 0.88);
+        ctx.stroke();
+    }
+
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 0.14 + frameState.energy * 0.12;
+    ctx.fillStyle = preset.theme.particleSecondary || preset.theme.halo;
+    for (let i = 0; i < 3; i += 1) {
+        const y = height * (0.28 + i * 0.24);
+        ctx.fillRect(width * 0.08, y, width * 0.84, Math.max(1, height * 0.0025));
+    }
+    ctx.restore();
+};
+
+const drawIndustrialPulseColumns = (ctx, width, height, preset, frameState) => {
+    const count = 20;
+    const barWidth = width * 0.018;
+    const baseY = height * 0.82;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (let i = 0; i < count; i += 1) {
+        const seed = hashUnit(i + 311.4);
+        const value = (i % 2 === 0 ? frameState.leftData[i * 2] : frameState.rightData[i * 2]) / 255;
+        const h = height * (0.06 + value * 0.16);
+        const x = width * 0.14 + i * width * 0.034;
+        const gradient = ctx.createLinearGradient(x, baseY - h, x, baseY);
+        gradient.addColorStop(0, i % 3 === 0 ? preset.theme.rightBarColorEnd : preset.theme.leftBarColorEnd);
+        gradient.addColorStop(1, i % 2 === 0 ? preset.theme.leftBarColorStart : preset.theme.rightBarColorStart);
+        ctx.globalAlpha = 0.48 + seed * 0.2 + frameState.bassEnergy * 0.18;
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.roundRect(x, baseY - h, barWidth, h, barWidth * 0.4);
+        ctx.fill();
+    }
+    ctx.restore();
+};
+
+const drawIndustrialScene = (ctx, width, height, preset, frameState, renderState, avatarRect) => {
+    drawIndustrialGrid(ctx, width, height, preset, frameState);
+    drawLightSweep(ctx, width, height, preset, frameState);
+    drawIndustrialPulseColumns(ctx, width, height, preset, frameState);
+
+    if (avatarRect) {
+        ctx.save();
+        ctx.strokeStyle = preset.theme.steelLine || 'rgba(210, 212, 202, 0.12)';
+        ctx.lineWidth = Math.max(2, width * 0.003);
+        ctx.beginPath();
+        ctx.roundRect(
+            avatarRect.x - width * 0.018,
+            avatarRect.y - width * 0.018,
+            avatarRect.size + width * 0.036,
+            avatarRect.size + width * 0.036,
+            width * 0.012
+        );
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    ctx.save();
+    ctx.globalAlpha = 0.58;
+    ctx.translate(width * 0.12, height * 0.83);
+    drawStereoBars(
+        ctx,
+        frameState.leftData,
+        frameState.rightData,
+        renderState.barsStateLeft,
+        renderState.barsStateRight,
+        width * 0.76,
+        height * 0.05,
+        {
+            leftBarColorStart: preset.theme.leftBarColorStart,
+            leftBarColorEnd: preset.theme.leftBarColorEnd,
+            rightBarColorStart: preset.theme.rightBarColorStart,
+            rightBarColorEnd: preset.theme.rightBarColorEnd,
+            gravity: 1.5,
+            gap: 4,
+        }
+    );
+    ctx.restore();
+};
+
+const drawPlayfulStickers = (ctx, width, height, preset, frameState) => {
+    const count = 24;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+
+    for (let i = 0; i < count; i += 1) {
+        const seedA = hashUnit(i + 401.2);
+        const seedB = hashUnit(i + 433.7);
+        const seedC = hashUnit(i + 477.1);
+        const x = seedA * width;
+        const y = height * (0.16 + seedB * 0.5) + Math.sin(frameState.time * (0.9 + seedC) + i) * 8;
+        const size = width * (0.014 + seedC * 0.02);
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(frameState.time * 0.06 + seedA * Math.PI * 2);
+        ctx.globalAlpha = 0.46 + seedB * 0.18;
+        ctx.fillStyle = i % 3 === 0
+            ? preset.theme.leftBarColorEnd
+            : i % 3 === 1
+                ? preset.theme.rightBarColorEnd
+                : preset.theme.particleSecondary || preset.theme.halo;
+        ctx.strokeStyle = preset.theme.stickerOutline || 'rgba(255, 246, 221, 0.72)';
+        ctx.lineWidth = Math.max(1.5, width * 0.002);
+        ctx.beginPath();
+        ctx.roundRect(-size, -size * 0.75, size * 2, size * 1.5, size * 0.6);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    ctx.restore();
+};
+
+const drawPlayfulBubbles = (ctx, width, height, preset, frameState) => {
+    const count = 20;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (let i = 0; i < count; i += 1) {
+        const seedA = hashUnit(i + 503.4);
+        const seedB = hashUnit(i + 544.2);
+        const seedC = hashUnit(i + 589.9);
+        const rise = (frameState.time * (0.018 + seedC * 0.02) + seedA) % 1;
+        const x = seedB * width + Math.sin(frameState.time * 0.8 + i) * width * 0.012;
+        const y = height - rise * height * 0.86;
+        const radius = width * (0.01 + seedC * 0.018) * (1 + frameState.bassEnergy * 0.3);
+        ctx.globalAlpha = 0.18 + seedA * 0.2;
+        ctx.strokeStyle = seedA > 0.5 ? preset.theme.particlePrimary : preset.theme.particleSecondary;
+        ctx.lineWidth = Math.max(1.5, width * 0.002);
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+    ctx.restore();
+};
+
+const drawPlayfulScene = (ctx, width, height, preset, frameState, renderState, avatarRect) => {
+    drawPlayfulStickers(ctx, width, height, preset, frameState);
+    drawPlayfulBubbles(ctx, width, height, preset, frameState);
+    drawLightSweep(ctx, width, height, preset, frameState);
+    drawWaveRibbon(ctx, width, height, preset, frameState);
+
+    if (avatarRect) {
+        drawRadialBars(ctx, {
+            centerX: avatarRect.centerX,
+            centerY: avatarRect.centerY,
+            size: avatarRect.size * 1.18,
+        }, preset, frameState);
+    }
+
+    ctx.save();
+    ctx.globalAlpha = 0.62;
+    ctx.translate(width * 0.16, height * 0.84);
+    drawStereoBars(
+        ctx,
+        frameState.leftData,
+        frameState.rightData,
+        renderState.barsStateLeft,
+        renderState.barsStateRight,
+        width * 0.68,
+        height * 0.05,
+        {
+            leftBarColorStart: preset.theme.leftBarColorStart,
+            leftBarColorEnd: preset.theme.leftBarColorEnd,
+            rightBarColorStart: preset.theme.rightBarColorStart,
+            rightBarColorEnd: preset.theme.rightBarColorEnd,
+            gravity: 1.1,
+            gap: 5,
+        }
+    );
+    ctx.restore();
+};
+
 const drawStereoScene = (ctx, width, height, preset, frameState, renderState) => {
     const vizWidth = width * preset.layout.visualizerWidth;
     const vizHeight = height * preset.layout.visualizerHeight;
@@ -782,6 +1074,21 @@ const drawSceneDetails = (ctx, width, height, preset, frameState, renderState, a
 
     if (preset.style === 'nature') {
         drawNatureScene(ctx, width, height, preset, frameState, renderState);
+        return;
+    }
+
+    if (preset.style === 'wasteland') {
+        drawWastelandScene(ctx, width, height, preset, frameState, renderState);
+        return;
+    }
+
+    if (preset.style === 'industrial') {
+        drawIndustrialScene(ctx, width, height, preset, frameState, renderState, avatarRect);
+        return;
+    }
+
+    if (preset.style === 'playful') {
+        drawPlayfulScene(ctx, width, height, preset, frameState, renderState, avatarRect);
         return;
     }
 

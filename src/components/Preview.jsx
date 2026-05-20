@@ -19,6 +19,36 @@ const EXPORT_STAGES = {
     READY: 'ready'
 };
 
+const muxVideoWithAudio = async (ffmpeg, { videoBlob, audioFile }) => {
+    const videoData = new Uint8Array(await videoBlob.arrayBuffer());
+    const audioData = await fetchFile(audioFile);
+
+    await ffmpeg.writeFile('video.mp4', videoData);
+    await ffmpeg.writeFile('audio.mp3', audioData);
+
+    try {
+        await ffmpeg.exec([
+            '-i', 'video.mp4',
+            '-i', 'audio.mp3',
+            '-c:v', 'copy',
+            '-c:a', 'aac',
+            '-shortest',
+            'output.mp4'
+        ]);
+
+        const data = await ffmpeg.readFile('output.mp4');
+        return new Blob([data], { type: 'video/mp4' });
+    } finally {
+        for (const fileName of ['video.mp4', 'audio.mp3', 'output.mp4']) {
+            try {
+                await ffmpeg.deleteFile(fileName);
+            } catch {
+                // Ignore cleanup failures.
+            }
+        }
+    }
+};
+
 const createExportCanvas = (width, height) => {
     if (typeof OffscreenCanvas !== 'undefined') {
         const canvas = new OffscreenCanvas(width, height);
@@ -84,7 +114,7 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
 
             // 2. Audio Analysis
             setExportStage(EXPORT_STAGES.ANALYZING);
-            const { leftFrequencyDataSequence, rightFrequencyDataSequence, audioBuffer, duration, totalFrames } = await extractFrequencyData(
+            const { leftFrequencyDataSequence, rightFrequencyDataSequence, duration, totalFrames } = await extractFrequencyData(
                 audio.file,
                 512,
                 (p) => setExportProgress(Math.floor(p * 10)), // 0-10%
@@ -92,14 +122,14 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
             );
             const preset = getScenePreset(scenePresetId);
 
-            if (await canUseWebCodecsExport(selectedProfile, audioBuffer)) {
+            if (await canUseWebCodecsExport(selectedProfile)) {
                 setExportStage(EXPORT_STAGES.ENCODING);
                 setExportProgress(12);
 
-                const blob = await exportWithWebCodecs({
+                const silentVideoBlob = await exportWithWebCodecs({
                     profile: selectedProfile,
                     audio,
-                    audioBuffer,
+                    duration,
                     leftFrequencyDataSequence,
                     rightFrequencyDataSequence,
                     totalFrames,
@@ -110,6 +140,14 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                     lyricLayoutMode,
                     avatarMode,
                     onProgress: (progress) => setExportProgress(12 + Math.floor(progress * 83)),
+                });
+
+                await loadFFmpeg();
+                const ffmpeg = ffmpegRef.current;
+                setExportProgress(96);
+                const blob = await muxVideoWithAudio(ffmpeg, {
+                    videoBlob: silentVideoBlob,
+                    audioFile: audio.file,
                 });
 
                 setDownloadUrl(URL.createObjectURL(blob));
@@ -131,10 +169,6 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
                     setExportProgress(70 + Math.floor(encodingPercent * 25)); // 70-95%
                 }
             });
-
-            // Write audio to ffmpeg FS
-            const audioData = await fetchFile(audio.file);
-            await ffmpeg.writeFile('audio.mp3', audioData);
 
             // 3. Rendering Phase
             setExportStage(EXPORT_STAGES.RENDERING);
@@ -230,23 +264,13 @@ export default function Preview({ background, audio, audioRef, isPlaying, setIsP
             setExportProgress(95);
             // setExportStage("Finalizing Mux...");
 
-            await ffmpeg.exec([
-                '-i', 'video.mp4',
-                '-i', 'audio.mp3',
-                '-c:v', 'copy', // Copy video stream (no re-encode)
-                '-c:a', 'aac',  // Re-encode audio to aac for mp4 compatibility
-                '-shortest',
-                'output.mp4'
-            ]);
-
-            const data = await ffmpeg.readFile('output.mp4');
-            const blob = new Blob([data.buffer], { type: 'video/mp4' });
+            const blob = await muxVideoWithAudio(ffmpeg, {
+                videoBlob: new Blob([await ffmpeg.readFile('video.mp4')], { type: 'video/mp4' }),
+                audioFile: audio.file,
+            });
             setDownloadUrl(URL.createObjectURL(blob));
 
             // Cleanup FS
-            await ffmpeg.deleteFile('audio.mp3');
-            await ffmpeg.deleteFile('video.mp4');
-            await ffmpeg.deleteFile('output.mp4');
             for (let i = 0; i < totalFrames; i++) {
                 try {
                     await ffmpeg.deleteFile(`frame_${i.toString().padStart(6, '0')}.jpg`);

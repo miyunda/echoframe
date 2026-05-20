@@ -209,9 +209,9 @@ const drawBackdrop = (ctx, width, height, image, preset, frameState, assets) => 
     }
 
     const topGradient = ctx.createLinearGradient(0, 0, 0, height);
-    topGradient.addColorStop(0, 'rgba(0, 0, 0, 0.05)');
+    topGradient.addColorStop(0, theme.topOverlay || 'rgba(0, 0, 0, 0.05)');
     topGradient.addColorStop(0.6, theme.backgroundOverlay);
-    topGradient.addColorStop(1, 'rgba(0, 0, 0, 0.76)');
+    topGradient.addColorStop(1, theme.bottomOverlay || 'rgba(0, 0, 0, 0.76)');
     ctx.fillStyle = topGradient;
     ctx.fillRect(0, 0, width, height);
 
@@ -511,6 +511,91 @@ const drawWaveRibbon = (ctx, width, height, preset, frameState) => {
     ctx.restore();
 };
 
+const drawNatureMotes = (ctx, width, height, preset, frameState) => {
+    const count = Math.round(44 + frameState.energy * 30);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+
+    for (let i = 0; i < count; i += 1) {
+        const seedA = hashUnit(i + 41.2);
+        const seedB = hashUnit(i + 77.7);
+        const seedC = hashUnit(i + 113.4);
+        const drift = (frameState.time * (0.008 + seedC * 0.018) + seedA) % 1;
+        const sway = Math.sin(frameState.time * (0.22 + seedB * 0.18) + i) * width * 0.018;
+        const x = seedB * width + sway;
+        const y = (drift * 1.18 - 0.09) * height;
+        const radius = 1.4 + seedC * 4.2 + frameState.midEnergy * 2.2;
+        const alpha = 0.14 + seedA * 0.18 + frameState.energy * 0.16;
+
+        ctx.globalAlpha = Math.min(0.54, alpha);
+        ctx.fillStyle = seedA > 0.55
+            ? preset.theme.particlePrimary || 'rgba(255, 255, 255, 0.7)'
+            : preset.theme.particleSecondary || preset.theme.halo;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    ctx.restore();
+};
+
+const drawLeafShadows = (ctx, width, height, preset, frameState) => {
+    ctx.save();
+    ctx.globalAlpha = 0.32 + frameState.midEnergy * 0.12;
+    ctx.fillStyle = preset.theme.leafShadow || 'rgba(37, 84, 53, 0.18)';
+    ctx.translate(width * 0.78, height * 0.16);
+    ctx.rotate(-0.42 + Math.sin(frameState.time * 0.12) * 0.04);
+
+    for (let i = 0; i < 13; i += 1) {
+        const seedA = hashUnit(i + 8.31);
+        const seedB = hashUnit(i + 18.62);
+        const x = (seedA - 0.5) * width * 0.34;
+        const y = seedB * height * 0.38;
+        const leafWidth = width * (0.028 + seedA * 0.018);
+        const leafHeight = height * (0.08 + seedB * 0.04);
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(seedA * Math.PI + Math.sin(frameState.time * 0.18 + i) * 0.08);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, leafWidth, leafHeight, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    ctx.restore();
+};
+
+const drawNatureScene = (ctx, width, height, preset, frameState, renderState) => {
+    drawLeafShadows(ctx, width, height, preset, frameState);
+    drawNatureMotes(ctx, width, height, preset, frameState);
+    drawLightSweep(ctx, width, height, preset, frameState);
+    drawWaveRibbon(ctx, width, height, preset, frameState);
+
+    ctx.save();
+    ctx.globalAlpha = 0.46 + frameState.energy * 0.16;
+    ctx.translate(width * 0.18, height * 0.84);
+    drawStereoBars(
+        ctx,
+        frameState.leftData,
+        frameState.rightData,
+        renderState.barsStateLeft,
+        renderState.barsStateRight,
+        width * 0.64,
+        height * 0.048,
+        {
+            leftBarColorStart: preset.theme.leftBarColorStart,
+            leftBarColorEnd: preset.theme.leftBarColorEnd,
+            rightBarColorStart: preset.theme.rightBarColorStart,
+            rightBarColorEnd: preset.theme.rightBarColorEnd,
+            gravity: 0.95,
+            gap: 5,
+        }
+    );
+    ctx.restore();
+};
+
 const drawStereoScene = (ctx, width, height, preset, frameState, renderState) => {
     const vizWidth = width * preset.layout.visualizerWidth;
     const vizHeight = height * preset.layout.visualizerHeight;
@@ -692,6 +777,11 @@ const drawSceneDetails = (ctx, width, height, preset, frameState, renderState, a
 
     if (preset.style === 'cosmic') {
         drawCosmicScene(ctx, width, height, preset, frameState, renderState, avatarRect);
+        return;
+    }
+
+    if (preset.style === 'nature') {
+        drawNatureScene(ctx, width, height, preset, frameState, renderState);
         return;
     }
 
